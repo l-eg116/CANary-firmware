@@ -1,0 +1,5 @@
+[default.general]
+chip = "STM32F103CB"
+
+[default.rtt]
+enabled = false

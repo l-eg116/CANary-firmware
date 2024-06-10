@@ -1,0 +1,5 @@
+[toolchain]
+channel = "stable"
+profile = "default"
+components = [ "rust-src", "rust-analyzer", "llvm-tools" ]
+targets = [ "thumbv7m-none-eabi" ]
