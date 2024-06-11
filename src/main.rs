@@ -9,6 +9,8 @@ mod can;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true)]
 mod app {
+    use bxcan::Frame;
+    use heapless::spsc::{Consumer, Producer, Queue};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, prelude::*, rcc::RccExt};
 
     use crate::{
@@ -21,9 +23,14 @@ mod app {
     }
 
     #[local]
-    struct Local {}
+    struct Local {
+        can_tx_producer: Producer<'static, Frame, CAN_TX_CAPACITY>,
+        can_tx_consumer: Consumer<'static, Frame, CAN_TX_CAPACITY>,
+    }
 
-    #[init]
+    const CAN_TX_CAPACITY: usize = 8;
+
+    #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new()])]
     fn init(cx: init::Context) -> (Shared, Local) {
         // Init flash, RCC and clocks
         let mut flash = cx.device.FLASH.constrain();
@@ -41,16 +48,47 @@ mod app {
             &mut afio.mapr,
         );
 
+        // Init CAN TX queue
+        let (can_tx_producer, can_tx_consumer) = cx.local.q.split();
+
         (
             Shared {
+                status: Status::Idle,
                 can,
             },
-            Local {},
+            Local {
+                can_tx_producer,
+                can_tx_consumer,
+            },
         )
     }
 
     #[idle]
     fn idle(_: idle::Context) -> ! {
         loop {}
+    }
+
+    #[task(binds = USB_HP_CAN_TX, shared = [can], local = [can_tx_consumer])]
+    fn can_sender(cx: can_sender::Context) {
+        let mut can = cx.shared.can;
+        let tx_queue = cx.local.can_tx_consumer;
+
+        can.lock(|can| {
+            can.bus.clear_tx_interrupt();
+
+            if can.bus.is_transmitter_idle() {
+                while let Some(frame) = tx_queue.dequeue() {
+                    match can.bus.transmit(&frame) {
+                        Ok(status) => assert_eq!(
+                            status.dequeued_frame(),
+                            None,
+                            "All mailboxes should have been empty"
+                        ),
+                        Err(nb::Error::WouldBlock) => break,
+                        Err(_) => unreachable!(),
+                    }
+                }
+            }
+        });
     }
 }

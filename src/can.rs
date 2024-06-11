@@ -1,10 +1,11 @@
 use bxcan::{filter::Mask32, Fifo, Frame};
+use heapless::spsc::Producer;
 use nb::block;
 use stm32f1xx_hal::{
     afio,
     can::Can,
     gpio::{Alternate, Pin},
-    pac::CAN1,
+    pac::{self, CAN1},
 };
 
 pub struct CanContext {
@@ -60,6 +61,15 @@ impl CanContext {
         self.bus
             .disable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
     }
+}
+
+pub fn enqueue_frame<'a, const N: usize>(
+    queue: &mut Producer<'a, Frame, N>,
+    frame: Frame,
+) -> Result<(), Frame> {
+    queue.enqueue(frame)?;
+    rtic::pend(pac::Interrupt::USB_HP_CAN_TX);
+    Ok(())
 }
 
 #[derive(Clone, Copy, Debug)]
