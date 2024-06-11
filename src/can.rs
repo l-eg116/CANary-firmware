@@ -7,7 +7,7 @@ use stm32f1xx_hal::{
 
 pub struct CanContext {
     bitrate: Bitrate,
-    can_bus: bxcan::Can<Can<CAN1>>,
+    pub bus: bxcan::Can<Can<CAN1>>,
 }
 
 impl CanContext {
@@ -19,11 +19,16 @@ impl CanContext {
     ) -> CanContext {
         can_instance.assign_pins((tx, rx), mapr);
 
+        let mut can_bus = bxcan::Can::builder(can_instance)
+            .set_bit_timing(0x001c_0003)
+            .leave_disabled();
+        can_bus
+            .modify_filters()
+            .enable_bank(0, Fifo::Fifo0, Mask32::accept_all());
+
         CanContext {
             bitrate: Bitrate::default(),
-            can_bus: bxcan::Can::builder(can_instance)
-                .set_bit_timing(0x001c_0003)
-                .leave_disabled(),
+            bus: can_bus,
         }
     }
 
@@ -31,21 +36,17 @@ impl CanContext {
         self.bitrate
     }
 
-    pub fn can_bus(&self) -> &bxcan::Can<Can<CAN1>> {
-        &self.can_bus
-    }
-
     pub fn set_bitrate(&mut self, bitrate: Bitrate) {
         self.bitrate = bitrate;
 
-        self.can_bus
+        self.bus
             .modify_config()
             .set_bit_timing(self.bitrate.as_bit_timing())
             .leave_disabled();
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Bitrate {
     Br1000kbps,
     Br800kbps,
@@ -64,6 +65,7 @@ impl Bitrate {
         Bitrate::Br125kbps
     }
 
+    // Bit timings calculated with http://www.bittiming.can-wiki.info/
     fn as_bit_timing(&self) -> u32 {
         match self {
             Bitrate::Br1000kbps => 0x00050000,
