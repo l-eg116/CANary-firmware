@@ -1,3 +1,5 @@
+use bxcan::{filter::Mask32, Fifo, Frame};
+use nb::block;
 use stm32f1xx_hal::{
     afio,
     can::Can,
@@ -43,6 +45,20 @@ impl CanContext {
             .modify_config()
             .set_bit_timing(self.bitrate.as_bit_timing())
             .leave_disabled();
+    }
+
+    pub fn enable_non_blocking(&mut self) {
+        block!(self.bus.enable_non_blocking()).unwrap();
+    }
+
+    pub fn enable_interrupts(&mut self) {
+        self.bus
+            .enable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
+    }
+
+    pub fn disable_interrupts(&mut self) {
+        self.bus
+            .disable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
     }
 }
 
