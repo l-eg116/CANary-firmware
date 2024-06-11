@@ -10,7 +10,9 @@ mod can;
 #[app(device = stm32f1xx_hal::pac, peripherals = true)]
 mod app {
     use bxcan::Frame;
+    use cortex_m::asm::nop;
     use heapless::spsc::{Consumer, Producer, Queue};
+    use rtt_target::{debug_rtt_init_print, rprintln};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, prelude::*, rcc::RccExt};
 
     use crate::can::*;
@@ -30,6 +32,9 @@ mod app {
 
     #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new()])]
     fn init(cx: init::Context) -> (Shared, Local) {
+        debug_rtt_init_print!();
+        rprintln!("Initializing...");
+
         // Init flash, RCC and clocks
         let mut flash = cx.device.FLASH.constrain();
         let rcc = cx.device.RCC.constrain();
@@ -63,7 +68,13 @@ mod app {
 
     #[idle]
     fn idle(_: idle::Context) -> ! {
-        loop {}
+        rprintln!("Entering idle loop");
+        loop {
+            for _ in 0..100_000 {
+                nop();
+            }
+            rprintln!("Idling...");
+        }
     }
 
     #[task(binds = USB_HP_CAN_TX, shared = [can], local = [can_tx_consumer])]
@@ -76,6 +87,7 @@ mod app {
 
             if can.bus.is_transmitter_idle() {
                 while let Some(frame) = tx_queue.dequeue() {
+                    rprintln!("Attempting to transmit {:?}", frame);
                     match can.bus.transmit(&frame) {
                         Ok(status) => assert_eq!(
                             status.dequeued_frame(),
@@ -97,6 +109,7 @@ mod app {
 
         can.lock(|can| {
             while let Ok(frame) = can.bus.receive() {
+                rprintln!("Received {:?}", frame);
                 let _ = enqueue_frame(tx_queue, frame);
             }
         });
