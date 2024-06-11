@@ -13,7 +13,7 @@ mod app {
     use heapless::spsc::{Consumer, Producer, Queue};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, prelude::*, rcc::RccExt};
 
-    use crate::can::CanContext;
+    use crate::can::*;
 
     #[shared]
     struct Shared {
@@ -39,20 +39,21 @@ mod app {
         let mut afio = cx.device.AFIO.constrain();
 
         // Init CAN bus
-        let can = CanContext::new(
+        let mut can = CanContext::new(
             Can::new(cx.device.CAN1, cx.device.USB),
             gpiob.pb8.into_floating_input(&mut gpiob.crh), // rx
             gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh), // tx
             &mut afio.mapr,
         );
+        can.set_bitrate(Bitrate::Br125kbps);
+        can.enable_interrupts();
+        can.enable_non_blocking();
 
         // Init CAN TX queue
         let (can_tx_producer, can_tx_consumer) = cx.local.q.split();
 
         (
-            Shared {
-                can,
-            },
+            Shared { can },
             Local {
                 can_tx_producer,
                 can_tx_consumer,
@@ -85,6 +86,18 @@ mod app {
                         Err(_) => unreachable!(),
                     }
                 }
+            }
+        });
+    }
+
+    #[task(binds = USB_LP_CAN_RX0, shared = [can], local = [can_tx_producer])]
+    fn can_receiver(cx: can_receiver::Context) {
+        let mut can = cx.shared.can;
+        let tx_queue = cx.local.can_tx_producer;
+
+        can.lock(|can| {
+            while let Ok(frame) = can.bus.receive() {
+                let _ = enqueue_frame(tx_queue, frame);
             }
         });
     }

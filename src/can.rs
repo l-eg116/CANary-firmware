@@ -53,13 +53,15 @@ impl CanContext {
     }
 
     pub fn enable_interrupts(&mut self) {
-        self.bus
-            .enable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
+        self.bus.enable_interrupts(
+            bxcan::Interrupts::FIFO0_MESSAGE_PENDING | bxcan::Interrupts::TRANSMIT_MAILBOX_EMPTY,
+        );
     }
 
     pub fn disable_interrupts(&mut self) {
-        self.bus
-            .disable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
+        self.bus.disable_interrupts(
+            bxcan::Interrupts::FIFO0_MESSAGE_PENDING | bxcan::Interrupts::TRANSMIT_MAILBOX_EMPTY,
+        );
     }
 }
 
