@@ -13,9 +13,7 @@ mod app {
     use heapless::spsc::{Consumer, Producer, Queue};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, prelude::*, rcc::RccExt};
 
-    use crate::{
-        can::CanContext,
-    };
+    use crate::can::CanContext;
 
     #[shared]
     struct Shared {
@@ -53,7 +51,6 @@ mod app {
 
         (
             Shared {
-                status: Status::Idle,
                 can,
             },
             Local {
