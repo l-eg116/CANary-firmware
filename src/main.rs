@@ -10,7 +10,6 @@ mod can;
 #[app(device = stm32f1xx_hal::pac, peripherals = true)]
 mod app {
     use bxcan::Frame;
-    use cortex_m::asm::nop;
     use heapless::spsc::{Consumer, Producer, Queue};
     use rtt_target::{debug_rtt_init_print, rprintln};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, prelude::*, rcc::RccExt};
@@ -70,10 +69,10 @@ mod app {
     fn idle(_: idle::Context) -> ! {
         rprintln!("Entering idle loop");
         loop {
-            for _ in 0..100_000 {
-                nop();
-            }
-            rprintln!("Idling...");
+            // for _ in 0..100_000 {
+            //     nop();
+            // }
+            // rprintln!("Idling...");
         }
     }
 
