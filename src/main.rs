@@ -85,14 +85,17 @@ mod app {
             can.bus.clear_tx_interrupt();
 
             if can.bus.is_transmitter_idle() {
-                while let Some(frame) = tx_queue.dequeue() {
+                while let Some(frame) = tx_queue.peek() {
                     rprintln!("Attempting to transmit {:?}", frame);
                     match can.bus.transmit(&frame) {
-                        Ok(status) => assert_eq!(
-                            status.dequeued_frame(),
-                            None,
-                            "All mailboxes should have been empty"
-                        ),
+                        Ok(status) => {
+                            tx_queue.dequeue();
+                            assert_eq!(
+                                status.dequeued_frame(),
+                                None,
+                                "All mailboxes should have been empty"
+                            );
+                        }
                         Err(nb::Error::WouldBlock) => break,
                         Err(_) => unreachable!(),
                     }
