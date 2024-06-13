@@ -1,4 +1,5 @@
-pub enum Status {
+pub enum CanaryStatus {
     Idle,
-    CanReceiving,
+    Active,
+    InfoBlink(u32),
 }

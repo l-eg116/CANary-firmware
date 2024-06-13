@@ -7,18 +7,27 @@ use rtic::app;
 
 mod buttons;
 mod can;
+mod status;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2])]
 mod app {
     use bxcan::Frame;
+    use cortex_m::asm;
     use fugit::Instant;
     use heapless::spsc::{Consumer, Producer, Queue};
     use rtic_monotonics::systick::prelude::*;
     use rtt_target::{debug_rtt_init_print, rprintln};
-    use stm32f1xx_hal::{can::Can, flash::FlashExt, gpio::ExtiPin, prelude::*, rcc::RccExt};
+    use status::CanaryStatus;
+    use stm32f1xx_hal::{
+        can::Can,
+        flash::FlashExt,
+        gpio::{ExtiPin, Output, Pin},
+        prelude::*,
+        rcc::RccExt,
+    };
 
-    use crate::buttons::*;
     use crate::can::*;
+    use crate::{buttons::*, status};
 
     const CAN_TX_CAPACITY: usize = 8;
     const TICK_RATE: u32 = 1_000;
@@ -32,11 +41,13 @@ mod app {
         #[lock_free]
         controller: Controller,
         can_tx_producer: Producer<'static, Frame, CAN_TX_CAPACITY>,
+        status: CanaryStatus,
     }
 
     #[local]
     struct Local {
         can_tx_consumer: Consumer<'static, Frame, CAN_TX_CAPACITY>,
+        status_led: Pin<'C', 13, Output>,
     }
 
     #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new()])]
@@ -53,6 +64,7 @@ mod app {
 
         let mut gpioa = cx.device.GPIOA.split();
         let mut gpiob = cx.device.GPIOB.split();
+        let mut gpioc = cx.device.GPIOC.split();
         let mut afio = cx.device.AFIO.constrain();
 
         // Init CAN bus
@@ -80,13 +92,22 @@ mod app {
         };
         controller.enable_interrupts(&mut afio, &mut cx.device.EXTI);
 
+        // Init status LED
+        let status_led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
+        let status = CanaryStatus::Idle;
+        blinker::spawn().unwrap();
+
         (
             Shared {
                 can,
                 controller,
                 can_tx_producer,
+                status,
             },
-            Local { can_tx_consumer },
+            Local {
+                can_tx_consumer,
+                status_led,
+            },
         )
     }
 
@@ -94,16 +115,28 @@ mod app {
     fn idle(_: idle::Context) -> ! {
         rprintln!("Entering idle loop");
         loop {
-            // bootleg_delay(100_000);
-            // rprintln!("Idling...");
+            asm::wfi();
         }
     }
 
-    #[task(priority = 1)]
-    async fn idler(_cx: idler::Context) {
+    #[task(local = [status_led], shared = [status], priority = 1)]
+    async fn blinker(mut cx: blinker::Context) {
         loop {
-            Mono::delay(500.millis()).await;
-            rprintln!("Idling...");
+            Mono::delay(cx.shared.status.lock(|status| match status {
+                CanaryStatus::Idle => 500.millis(),
+                CanaryStatus::Active => 100.millis(),
+                CanaryStatus::InfoBlink(0) => {
+                    *status = CanaryStatus::Idle;
+                    10.millis()
+                }
+                CanaryStatus::InfoBlink(n) => {
+                    *status = CanaryStatus::InfoBlink(*n - 1);
+                    10.millis()
+                }
+            }))
+            .await;
+
+            cx.local.status_led.toggle();
         }
     }
 
