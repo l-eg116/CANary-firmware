@@ -17,7 +17,7 @@ fn bootleg_delay(n: usize) {
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true)]
 mod app {
-    use bxcan::{Frame, StandardId};
+    use bxcan::Frame;
     use heapless::spsc::{Consumer, Producer, Queue};
     use rtt_target::{debug_rtt_init_print, rprintln};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, gpio::ExtiPin, prelude::*, rcc::RccExt};
@@ -142,78 +142,48 @@ mod app {
         });
     }
 
-    #[task(binds = EXTI4, shared = [controller, can_tx_producer], priority = 2)]
-    fn clicked_ok(mut cx: clicked_ok::Context) {
+    #[task(binds = EXTI4, shared = [controller], priority = 2)]
+    fn clicked_ok(cx: clicked_ok::Context) {
         let controller = cx.shared.controller;
 
         bootleg_delay(100);
         controller.button_ok.clear_interrupt_pending_bit();
-        rprintln!(" | Pressed OK");
-        let _ = cx.shared.can_tx_producer.lock(|tx_queue| {
-            enqueue_frame(
-                tx_queue,
-                Frame::new_data(StandardId::new(1).unwrap(), [b'O', b'K']),
-            )
-        });
+        rprintln!("Pressed OK");
     }
 
-    #[task(binds = EXTI0, shared = [controller, can_tx_producer], priority = 2)]
-    fn clicked_up(mut cx: clicked_up::Context) {
+    #[task(binds = EXTI0, shared = [controller], priority = 2)]
+    fn clicked_up(cx: clicked_up::Context) {
         let controller = cx.shared.controller;
 
         bootleg_delay(100);
         controller.button_up.clear_interrupt_pending_bit();
-        rprintln!(" | Pressed UP");
-        let _ = cx.shared.can_tx_producer.lock(|tx_queue| {
-            enqueue_frame(
-                tx_queue,
-                Frame::new_data(StandardId::new(1).unwrap(), [b'U', b'P']),
-            )
-        });
+        rprintln!("Pressed UP");
     }
 
-    #[task(binds = EXTI1, shared = [controller, can_tx_producer], priority = 2)]
-    fn clicked_down(mut cx: clicked_down::Context) {
+    #[task(binds = EXTI1, shared = [controller], priority = 2)]
+    fn clicked_down(cx: clicked_down::Context) {
         let controller = cx.shared.controller;
 
         bootleg_delay(100);
         controller.button_down.clear_interrupt_pending_bit();
-        rprintln!(" | Pressed DOWN");
-        let _ = cx.shared.can_tx_producer.lock(|tx_queue| {
-            enqueue_frame(
-                tx_queue,
-                Frame::new_data(StandardId::new(1).unwrap(), [b'D', b'O', b'W', b'N']),
-            )
-        });
+        rprintln!("Pressed DOWN");
     }
 
-    #[task(binds = EXTI2, shared = [controller, can_tx_producer], priority = 2)]
-    fn clicked_right(mut cx: clicked_right::Context) {
+    #[task(binds = EXTI2, shared = [controller], priority = 2)]
+    fn clicked_right(cx: clicked_right::Context) {
         let controller = cx.shared.controller;
 
         bootleg_delay(100);
         controller.button_right.clear_interrupt_pending_bit();
-        rprintln!(" | Pressed RIGHT");
-        let _ = cx.shared.can_tx_producer.lock(|tx_queue| {
-            enqueue_frame(
-                tx_queue,
-                Frame::new_data(StandardId::new(1).unwrap(), [b'R', b'I', b'G', b'H', b'T']),
-            )
-        });
+        rprintln!("Pressed RIGHT");
     }
 
-    #[task(binds = EXTI3, shared = [controller, can_tx_producer], priority = 2)]
-    fn clicked_left(mut cx: clicked_left::Context) {
+    #[task(binds = EXTI3, shared = [controller], priority = 2)]
+    fn clicked_left(cx: clicked_left::Context) {
         let controller = cx.shared.controller;
 
         bootleg_delay(100);
         controller.button_left.clear_interrupt_pending_bit();
-        rprintln!(" | Pressed LEFT");
-        let _ = cx.shared.can_tx_producer.lock(|tx_queue| {
-            enqueue_frame(
-                tx_queue,
-                Frame::new_data(StandardId::new(1).unwrap(), [b'L', b'E', b'F', b'T']),
-            )
-        });
+        rprintln!("Pressed LEFT");
     }
 }
