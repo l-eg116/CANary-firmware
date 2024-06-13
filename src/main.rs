@@ -2,33 +2,29 @@
 #![no_main]
 #![allow(dead_code)]
 
-use cortex_m::asm::nop;
 use panic_rtt_target as _;
 use rtic::app;
 
 mod buttons;
 mod can;
 
-fn bootleg_delay(n: usize) {
-    for _ in 0..n {
-        nop();
-    }
-}
-
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2])]
 mod app {
     use bxcan::Frame;
+    use fugit::Instant;
     use heapless::spsc::{Consumer, Producer, Queue};
     use rtic_monotonics::systick::prelude::*;
     use rtt_target::{debug_rtt_init_print, rprintln};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, gpio::ExtiPin, prelude::*, rcc::RccExt};
 
-    use crate::bootleg_delay;
     use crate::buttons::*;
     use crate::can::*;
 
     const CAN_TX_CAPACITY: usize = 8;
-    systick_monotonic!(Mono, 1_000);
+    const TICK_RATE: u32 = 1_000;
+    const DEBOUNCE_DELAY_MS: u32 = 5;
+
+    systick_monotonic!(Mono, TICK_RATE);
 
     #[shared]
     struct Shared {
@@ -51,8 +47,8 @@ mod app {
         // Init flash, RCC and clocks
         let mut flash = cx.device.FLASH.constrain();
         let rcc = cx.device.RCC.constrain();
-        let _clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
 
+        let _clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
         Mono::start(cx.core.SYST, 8_000_000);
 
         let mut gpioa = cx.device.GPIOA.split();
@@ -98,7 +94,7 @@ mod app {
     fn idle(_: idle::Context) -> ! {
         rprintln!("Entering idle loop");
         loop {
-            // Systick::delay(100.millis()).await;
+            // bootleg_delay(100_000);
             // rprintln!("Idling...");
         }
     }
@@ -152,48 +148,96 @@ mod app {
         });
     }
 
-    #[task(binds = EXTI4, shared = [controller], priority = 2)]
-    fn clicked_ok(cx: clicked_ok::Context) {
-        let controller = cx.shared.controller;
+    fn debounce_input(last_press_time: &mut Option<Instant<u32, 1, TICK_RATE>>) -> bool {
+        let now = Mono::now();
+        let last_time = last_press_time
+            .replace(now)
+            .unwrap_or(Instant::<u32, 1, TICK_RATE>::from_ticks(0));
 
-        bootleg_delay(100);
-        controller.button_ok.clear_interrupt_pending_bit();
+        now - last_time < DEBOUNCE_DELAY_MS.millis::<1, TICK_RATE>()
+    }
+
+    #[task(
+        binds = EXTI4,
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        shared = [controller],
+        priority = 2
+    )]
+    fn clicked_ok(cx: clicked_ok::Context) {
+        cx.shared.controller.button_ok.clear_interrupt_pending_bit();
+        if debounce_input(cx.local.last_press_time) {
+            return;
+        };
+
         rprintln!("Pressed OK");
     }
 
-    #[task(binds = EXTI0, shared = [controller], priority = 2)]
+    #[task(
+        binds = EXTI0,
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        shared = [controller],
+        priority = 2
+    )]
     fn clicked_up(cx: clicked_up::Context) {
-        let controller = cx.shared.controller;
+        cx.shared.controller.button_up.clear_interrupt_pending_bit();
+        if debounce_input(cx.local.last_press_time) {
+            return;
+        };
 
-        bootleg_delay(100);
-        controller.button_up.clear_interrupt_pending_bit();
         rprintln!("Pressed UP");
     }
 
-    #[task(binds = EXTI1, shared = [controller], priority = 2)]
+    #[task(
+        binds = EXTI1,
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        shared = [controller],
+        priority = 2
+    )]
     fn clicked_down(cx: clicked_down::Context) {
-        let controller = cx.shared.controller;
+        cx.shared
+            .controller
+            .button_down
+            .clear_interrupt_pending_bit();
+        if debounce_input(cx.local.last_press_time) {
+            return;
+        };
 
-        bootleg_delay(100);
-        controller.button_down.clear_interrupt_pending_bit();
         rprintln!("Pressed DOWN");
     }
 
-    #[task(binds = EXTI2, shared = [controller], priority = 2)]
+    #[task(
+        binds = EXTI2,
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        shared = [controller],
+        priority = 2
+    )]
     fn clicked_right(cx: clicked_right::Context) {
-        let controller = cx.shared.controller;
+        cx.shared
+            .controller
+            .button_right
+            .clear_interrupt_pending_bit();
+        if debounce_input(cx.local.last_press_time) {
+            return;
+        };
 
-        bootleg_delay(100);
-        controller.button_right.clear_interrupt_pending_bit();
         rprintln!("Pressed RIGHT");
     }
 
-    #[task(binds = EXTI3, shared = [controller], priority = 2)]
+    #[task(
+        binds = EXTI3,
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        shared = [controller],
+        priority = 2
+    )]
     fn clicked_left(cx: clicked_left::Context) {
-        let controller = cx.shared.controller;
+        cx.shared
+            .controller
+            .button_left
+            .clear_interrupt_pending_bit();
+        if debounce_input(cx.local.last_press_time) {
+            return;
+        };
 
-        bootleg_delay(100);
-        controller.button_left.clear_interrupt_pending_bit();
         rprintln!("Pressed LEFT");
     }
 }
