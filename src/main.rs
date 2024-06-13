@@ -187,6 +187,7 @@ mod app {
             .replace(now)
             .unwrap_or(Instant::<u32, 1, TICK_RATE>::from_ticks(0));
 
+        // This operation can fail if Mono::now() overflows, which it will do after u32::MAX ~= 50 days
         now - last_time < DEBOUNCE_DELAY_MS.millis::<1, TICK_RATE>()
     }
 
