@@ -15,10 +15,11 @@ fn bootleg_delay(n: usize) {
     }
 }
 
-#[app(device = stm32f1xx_hal::pac, peripherals = true)]
+#[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2])]
 mod app {
     use bxcan::Frame;
     use heapless::spsc::{Consumer, Producer, Queue};
+    use rtic_monotonics::systick::prelude::*;
     use rtt_target::{debug_rtt_init_print, rprintln};
     use stm32f1xx_hal::{can::Can, flash::FlashExt, gpio::ExtiPin, prelude::*, rcc::RccExt};
 
@@ -27,6 +28,7 @@ mod app {
     use crate::can::*;
 
     const CAN_TX_CAPACITY: usize = 8;
+    systick_monotonic!(Mono, 1_000);
 
     #[shared]
     struct Shared {
@@ -50,6 +52,8 @@ mod app {
         let mut flash = cx.device.FLASH.constrain();
         let rcc = cx.device.RCC.constrain();
         let _clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
+
+        Mono::start(cx.core.SYST, 8_000_000);
 
         let mut gpioa = cx.device.GPIOA.split();
         let mut gpiob = cx.device.GPIOB.split();
@@ -94,10 +98,16 @@ mod app {
     fn idle(_: idle::Context) -> ! {
         rprintln!("Entering idle loop");
         loop {
-            // for _ in 0..100_000 {
-            //     nop();
-            // }
+            // Systick::delay(100.millis()).await;
             // rprintln!("Idling...");
+        }
+    }
+
+    #[task(priority = 1)]
+    async fn idler(_cx: idler::Context) {
+        loop {
+            Mono::delay(500.millis()).await;
+            rprintln!("Idling...");
         }
     }
 
