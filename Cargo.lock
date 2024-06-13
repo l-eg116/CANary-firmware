@@ -67,6 +67,7 @@ dependencies = [
  "heapless",
  "nb 1.1.0",
  "panic-halt",
+ "panic-rtt-target",
  "rtic",
  "rtic-monotonics",
  "rtt-target",
@@ -262,6 +263,16 @@ name = "panic-halt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de96540e0ebde571dc55c73d60ef407c653844e6f9a1e2fdbd40c07b9252d812"
+
+[[package]]
+name = "panic-rtt-target"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "608d1d809dd8960d5e8364981279c7ab280a13d98b99eae049885a7ab2b1cbfe"
+dependencies = [
+ "critical-section",
+ "rtt-target",
+]
 
 [[package]]
 name = "pin-project-lite"

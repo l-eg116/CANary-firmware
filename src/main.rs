@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use cortex_m::asm::nop;
-use panic_halt as _;
+use panic_rtt_target as _;
 use rtic::app;
 
 mod buttons;
