@@ -20,6 +20,6 @@ pkgs.mkShell {
   RUST_BACKTRACE = 1;
 
   shellHook = ''
-    SHELL=fish code .
+    # SHELL=fish code .
   '';
 }
