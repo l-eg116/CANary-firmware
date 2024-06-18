@@ -7,30 +7,31 @@ use rtic::app;
 
 mod buttons;
 mod can;
+mod spi;
 mod status;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2])]
 mod app {
     use bxcan::Frame;
     use cortex_m::asm;
+    use embedded_sdmmc as sdmmc;
     use fugit::Instant;
     use heapless::spsc::{Consumer, Producer, Queue};
     use rtic_monotonics::systick::prelude::*;
-    use rtt_target::{debug_rtt_init_print, rprintln};
-    use status::CanaryStatus;
+    use rtt_target::{rprint, rprintln, rtt_init_print};
     use stm32f1xx_hal::{
         can::Can,
         flash::FlashExt,
-        gpio::{ExtiPin, Output, Pin},
+        gpio::{Alternate, ExtiPin, Output, Pin},
         prelude::*,
         rcc::RccExt,
+        spi::{Mode, Phase, Polarity, Spi},
     };
 
-    use crate::can::*;
-    use crate::{buttons::*, status};
+    use crate::{buttons::*, can::*, spi::*, status::*};
 
     const CAN_TX_CAPACITY: usize = 8;
-    const TICK_RATE: u32 = 1_000;
+    pub const TICK_RATE: u32 = 1_000;
     const DEBOUNCE_DELAY_MS: u32 = 5;
 
     systick_monotonic!(Mono, TICK_RATE);
@@ -48,11 +49,22 @@ mod app {
     struct Local {
         can_tx_consumer: Consumer<'static, Frame, CAN_TX_CAPACITY>,
         status_led: Pin<'C', 13, Output>,
+        sd_card: Option<
+            embedded_sdmmc::SdCard<
+                SpiWrapper<(
+                    Pin<'B', 13, Alternate>,
+                    Pin<'B', 14>,
+                    Pin<'B', 15, Alternate>,
+                )>,
+                OutputPinWrapper<'B', 12>,
+                Mono,
+            >,
+        >,
     }
 
     #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new()])]
     fn init(mut cx: init::Context) -> (Shared, Local) {
-        debug_rtt_init_print!();
+        rtt_init_print!();
         rprintln!("Initializing...");
 
         // Init flash, RCC and clocks
@@ -97,6 +109,32 @@ mod app {
         let status = CanaryStatus::Idle;
         blinker::spawn().unwrap();
 
+        // Init SD Card
+        let sd_spi = SpiWrapper {
+            spi: Spi::spi2(
+                cx.device.SPI2,
+                (
+                    gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh), // sck
+                    gpiob.pb14,                                          // miso
+                    gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh), // mosi
+                ),
+                Mode {
+                    phase: Phase::CaptureOnSecondTransition,
+                    polarity: Polarity::IdleHigh,
+                },
+                400.kHz(),
+                _clocks,
+            ),
+        };
+
+        let sd_card = embedded_sdmmc::SdCard::new(
+            sd_spi,
+            OutputPinWrapper {
+                pin: gpiob.pb12.into_push_pull_output(&mut gpiob.crh), // cs
+            },
+            Mono,
+        );
+
         (
             Shared {
                 can,
@@ -107,6 +145,7 @@ mod app {
             Local {
                 can_tx_consumer,
                 status_led,
+                sd_card: Some(sd_card),
             },
         )
     }
