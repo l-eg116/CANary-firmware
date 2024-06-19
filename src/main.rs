@@ -18,7 +18,7 @@ mod app {
     use fugit::Instant;
     use heapless::spsc::{Consumer, Producer, Queue};
     use rtic_monotonics::systick::prelude::*;
-    use rtt_target::{rprint, rprintln, rtt_init_print};
+    use rtt_target::{rprintln, rtt_init_print};
     use stm32f1xx_hal::{
         can::Can,
         flash::FlashExt,
@@ -43,14 +43,9 @@ mod app {
         controller: Controller,
         can_tx_producer: Producer<'static, Frame, CAN_TX_CAPACITY>,
         status: CanaryStatus,
-    }
-
-    #[local]
-    struct Local {
-        can_tx_consumer: Consumer<'static, Frame, CAN_TX_CAPACITY>,
-        status_led: Pin<'C', 13, Output>,
-        sd_card: Option<
-            embedded_sdmmc::SdCard<
+        #[lock_free]
+        volume_manager: sdmmc::VolumeManager<
+            sdmmc::SdCard<
                 SpiWrapper<(
                     Pin<'B', 13, Alternate>,
                     Pin<'B', 14>,
@@ -59,10 +54,19 @@ mod app {
                 OutputPinWrapper<'B', 12>,
                 Mono,
             >,
+            FakeTimeSource,
+            2,
+            2,
         >,
     }
 
-    #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new()])]
+    #[local]
+    struct Local {
+        can_tx_consumer: Consumer<'static, Frame, CAN_TX_CAPACITY>,
+        status_led: Pin<'C', 13, Output>,
+    }
+
+    #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new(),])]
     fn init(mut cx: init::Context) -> (Shared, Local) {
         rtt_init_print!();
         rprintln!("Initializing...");
@@ -110,30 +114,34 @@ mod app {
         blinker::spawn().unwrap();
 
         // Init SD Card
-        let sd_spi = SpiWrapper {
-            spi: Spi::spi2(
-                cx.device.SPI2,
-                (
-                    gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh), // sck
-                    gpiob.pb14,                                          // miso
-                    gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh), // mosi
+        let volume_manager = {
+            let sd_spi = SpiWrapper {
+                spi: Spi::spi2(
+                    cx.device.SPI2,
+                    (
+                        gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh), // sck
+                        gpiob.pb14,                                          // miso
+                        gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh), // mosi
+                    ),
+                    Mode {
+                        phase: Phase::CaptureOnSecondTransition,
+                        polarity: Polarity::IdleHigh,
+                    },
+                    400.kHz(),
+                    _clocks,
                 ),
-                Mode {
-                    phase: Phase::CaptureOnSecondTransition,
-                    polarity: Polarity::IdleHigh,
+            };
+            let sd_card = embedded_sdmmc::SdCard::new(
+                sd_spi,
+                OutputPinWrapper {
+                    pin: gpiob.pb12.into_push_pull_output(&mut gpiob.crh), // cs
                 },
-                400.kHz(),
-                _clocks,
-            ),
-        };
+                Mono,
+            );
+            rprintln!("Found SD card with size {:?}", sd_card.num_bytes());
 
-        let sd_card = embedded_sdmmc::SdCard::new(
-            sd_spi,
-            OutputPinWrapper {
-                pin: gpiob.pb12.into_push_pull_output(&mut gpiob.crh), // cs
-            },
-            Mono,
-        );
+            sdmmc::VolumeManager::<_, _, 2, 2, 1>::new_with_limits(sd_card, FakeTimeSource {}, 5000)
+        };
 
         (
             Shared {
@@ -141,11 +149,11 @@ mod app {
                 controller,
                 can_tx_producer,
                 status,
+                volume_manager,
             },
             Local {
                 can_tx_consumer,
                 status_led,
-                sd_card: Some(sd_card),
             },
         )
     }
