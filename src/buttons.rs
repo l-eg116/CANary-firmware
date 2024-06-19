@@ -1,9 +1,13 @@
+use rtic_monotonics::{fugit::Instant, Monotonic as _};
 use rtt_target::rprint;
 use stm32f1xx_hal::{
     afio,
     gpio::{Edge, ExtiPin, Input, Pin, PullUp},
     pac::EXTI,
+    timer::ExtU32 as _,
 };
+
+use crate::app::{Mono, DEBOUNCE_DELAY_MS, TICK_RATE};
 
 type OkButton = Pin<'B', 4, Input<PullUp>>;
 type UpButton = Pin<'A', 0, Input<PullUp>>;
@@ -108,4 +112,14 @@ impl ControllerState {
             if self.left_pressed { "left" } else { "----" }
         )
     }
+}
+
+pub fn debounce_input(last_press_time: &mut Option<Instant<u32, 1, TICK_RATE>>) -> bool {
+    let now = Mono::now();
+    let last_time = last_press_time
+        .replace(now)
+        .unwrap_or(Instant::<u32, 1, TICK_RATE>::from_ticks(0));
+
+    // This operation can fail if Mono::now() overflows, which it will do after u32::MAX ~= 50 days
+    now - last_time < DEBOUNCE_DELAY_MS.millis::<1, TICK_RATE>()
 }

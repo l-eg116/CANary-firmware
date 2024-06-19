@@ -30,9 +30,9 @@ mod app {
 
     use crate::{buttons::*, can::*, spi::*, status::*};
 
-    const CAN_TX_CAPACITY: usize = 8;
+    pub const CAN_TX_CAPACITY: usize = 8;
     pub const TICK_RATE: u32 = 1_000;
-    const DEBOUNCE_DELAY_MS: u32 = 5;
+    pub const DEBOUNCE_DELAY_MS: u32 = 20;
 
     systick_monotonic!(Mono, TICK_RATE);
 
@@ -226,16 +226,6 @@ mod app {
                 let _ = enqueue_frame(tx_queue, frame);
             }
         });
-    }
-
-    fn debounce_input(last_press_time: &mut Option<Instant<u32, 1, TICK_RATE>>) -> bool {
-        let now = Mono::now();
-        let last_time = last_press_time
-            .replace(now)
-            .unwrap_or(Instant::<u32, 1, TICK_RATE>::from_ticks(0));
-
-        // This operation can fail if Mono::now() overflows, which it will do after u32::MAX ~= 50 days
-        now - last_time < DEBOUNCE_DELAY_MS.millis::<1, TICK_RATE>()
     }
 
     #[task(
