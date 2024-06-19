@@ -75,7 +75,7 @@ mod app {
         let mut flash = cx.device.FLASH.constrain();
         let rcc = cx.device.RCC.constrain();
 
-        let _clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
+        let clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
         Mono::start(cx.core.SYST, 8_000_000);
 
         let mut gpioa = cx.device.GPIOA.split();
@@ -128,7 +128,7 @@ mod app {
                         polarity: Polarity::IdleHigh,
                     },
                     400.kHz(),
-                    _clocks,
+                    clocks,
                 ),
             };
             let sd_card = embedded_sdmmc::SdCard::new(
