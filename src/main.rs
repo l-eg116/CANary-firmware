@@ -11,16 +11,16 @@ mod sd;
 mod spi;
 mod status;
 
-#[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2])]
+#[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2, TIM3, TIM4])]
 mod app {
+    use core::fmt::Write;
 
     use bxcan::Frame;
-    use cortex_m::asm;
     use embedded_sdmmc as sdmmc;
     use fugit::Instant;
-    use heapless::spsc::{Consumer, Producer, Queue};
+    use heapless::{
         spsc::{Consumer, Producer, Queue},
-        String, Vec,
+        String,
     };
     use rtic_monotonics::systick::prelude::*;
     use rtt_target::{rprintln, rtt_init_print};
@@ -49,12 +49,17 @@ mod app {
         can: CanContext,
         #[lock_free]
         controller: Controller,
+        can_tx_producer: Producer<'static, Frame, CAN_QUEUES_CAPACITY>,
         status: CanaryStatus,
         volume_manager: VolumeManager,
+        stop_listening: bool, // TODO : make parameter
     }
 
     #[local]
     struct Local {
+        can_tx_consumer: Consumer<'static, Frame, CAN_QUEUES_CAPACITY>,
+        can_rx_producer: Producer<'static, Frame, CAN_QUEUES_CAPACITY>,
+        can_rx_consumer: Consumer<'static, Frame, CAN_QUEUES_CAPACITY>,
         status_led: Pin<'C', 13, Output>,
     }
 
@@ -151,6 +156,7 @@ mod app {
                 status,
                 volume_manager,
                 can_tx_producer,
+                stop_listening: false,
             },
             Local {
                 can_tx_consumer,
@@ -192,7 +198,7 @@ mod app {
 
     #[task(
         binds = USB_HP_CAN_TX,
-        priority = 3,
+        priority = 4,
         shared = [can],
         local = [can_tx_consumer]
     )]
@@ -226,12 +232,17 @@ mod app {
     #[task(
         binds = USB_LP_CAN_RX0,
         priority = 3,
-        shared = [can, can_tx_producer]
+        shared = [can, can_tx_producer],
+        local = [can_rx_producer],
     )]
     fn can_receiver(cx: can_receiver::Context) {
         (cx.shared.can, cx.shared.can_tx_producer).lock(|can, tx_queue| {
             while let Ok(frame) = can.bus.receive() {
                 rprintln!("Received {:?}", frame);
+                cx.local
+                    .can_rx_producer
+                    .enqueue(frame.clone())
+                    .expect("there is space is the queue"); // TODO
                 if ACK_INCOMING {
                     let _ = enqueue_frame(tx_queue, frame);
                 }
@@ -243,7 +254,7 @@ mod app {
         binds = EXTI4,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 20
+        priority = 8
     )]
     fn clicked_ok(cx: clicked_ok::Context) {
         cx.shared.controller.button_ok.clear_interrupt_pending_bit();
@@ -252,14 +263,14 @@ mod app {
         };
 
         rprintln!("Pressed OK");
-        // read_file::spawn().unwrap();
+        sd_reader::spawn("boot.log").unwrap();
     }
 
     #[task(
         binds = EXTI0,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 20
+        priority = 8
     )]
     fn clicked_up(cx: clicked_up::Context) {
         cx.shared.controller.button_up.clear_interrupt_pending_bit();
@@ -268,15 +279,19 @@ mod app {
         };
 
         rprintln!("Pressed UP");
+        match sd_writer::spawn() {
+            Ok(_) => (),
+            Err(_) => rprintln!("Already spawned"),
+        };
     }
 
     #[task(
         binds = EXTI1,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
-        shared = [controller],
         priority = 20
+        shared = [controller, stop_listening],
     )]
-    fn clicked_down(cx: clicked_down::Context) {
+    fn clicked_down(mut cx: clicked_down::Context) {
         cx.shared
             .controller
             .button_down
@@ -286,13 +301,14 @@ mod app {
         };
 
         rprintln!("Pressed DOWN");
+        cx.shared.stop_listening.lock(|f| *f = true);
     }
 
     #[task(
         binds = EXTI2,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 20
+        priority = 8
     )]
     fn clicked_right(cx: clicked_right::Context) {
         cx.shared
@@ -310,7 +326,7 @@ mod app {
         binds = EXTI3,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 20
+        priority = 8
     )]
     fn clicked_left(cx: clicked_left::Context) {
         cx.shared
@@ -324,33 +340,55 @@ mod app {
         rprintln!("Pressed LEFT");
     }
 
-    #[task(priority = 1, shared = [volume_manager])]
-    async fn read_file(mut cx: read_file::Context) {
-        cx.shared.volume_manager.lock(|vm| {
+    #[task(
+        priority = 2,
+        shared = [volume_manager, can_tx_producer],
+    )]
+    async fn sd_reader(cx: sd_reader::Context, file_name: &str) {
+        (cx.shared.volume_manager, cx.shared.can_tx_producer).lock(|vm, tx_queue| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut root_dir = sd_volume.open_root_dir().unwrap();
-            let in_logs = CanLogsInterator::new(
+            let logs = CanLogsInterator::new(
                 root_dir
-                    .open_file_in_dir("boot.log", sdmmc::Mode::ReadOnly)
+                    .open_file_in_dir(file_name, sdmmc::Mode::ReadOnly)
                     .unwrap(),
             );
 
-            let frames: Vec<Frame, 32> = in_logs.collect();
+            for frame in logs {
+                while !tx_queue.ready() {}
+                enqueue_frame(tx_queue, frame).expect("tx_queue is ready");
+            }
+        });
+    }
+
+    #[task(
+        priority = 2,
+        shared = [volume_manager, stop_listening],
+        local = [can_rx_consumer],
+    )]
+    async fn sd_writer(mut cx: sd_writer::Context) {
+        let rx_queue = cx.local.can_rx_consumer;
+        rprintln!("started writing");
+        cx.shared.stop_listening.lock(|f| *f = false);
+        cx.shared.volume_manager.lock(|vm| {
+            let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
+            let mut root_dir = sd_volume.open_root_dir().unwrap();
 
             let mut file_name = String::<12>::new();
             file_name
                 .write_fmt(format_args!("{:08}.log", Mono::now().ticks()))
                 .unwrap();
-            let mut out_logs = root_dir
+            let mut logs = root_dir
                 .open_file_in_dir(&file_name[..], sdmmc::Mode::ReadWriteCreateOrTruncate)
                 .unwrap();
 
-            let _ = frames
-                .iter()
-                .map(|f| out_logs.write(frame_to_log(f).as_bytes()).unwrap())
-                .collect::<()>();
-
-            rprintln!("done");
-        })
+            while !cx.shared.stop_listening.lock(|f| *f) {
+                if let Some(frame) = rx_queue.dequeue() {
+                    logs.write(frame_to_log(&frame).as_bytes()).unwrap();
+                }
+            }
+        });
+        rprintln!("stoped writing");
+        cx.shared.stop_listening.lock(|f| *f = false);
     }
 }
