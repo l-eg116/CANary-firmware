@@ -162,7 +162,7 @@ mod app {
     fn idle(_: idle::Context) -> ! {
         rprintln!("Entering idle loop");
         loop {
-            asm::wfi();
+            // asm::wfi();
         }
     }
 
