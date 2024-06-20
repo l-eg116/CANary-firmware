@@ -16,52 +16,19 @@ const LOG_LINE_LEN: usize = 46;
 const READ_BUFFER_SIZE: usize = 64;
 const STORE_BUFFER_SIZE: usize = READ_BUFFER_SIZE * 2;
 
-pub type VolumeManager = sdmmc::VolumeManager<
-    sdmmc::SdCard<
-        SpiWrapper<(
-            Pin<'B', 13, Alternate>,
-            Pin<'B', 14>,
-            Pin<'B', 15, Alternate>,
-        )>,
-        OutputPinWrapper<'B', 12>,
-        Mono,
-    >,
-    FakeTimeSource,
-    2,
-    2,
+pub type SdCard = sdmmc::SdCard<
+    SpiWrapper<(
+        Pin<'B', 13, Alternate>,
+        Pin<'B', 14>,
+        Pin<'B', 15, Alternate>,
+    )>,
+    OutputPinWrapper<'B', 12>,
+    Mono,
 >;
-pub type Directory<'a> = sdmmc::Directory<
-    'a,
-    sdmmc::SdCard<
-        SpiWrapper<(
-            Pin<'B', 13, Alternate>,
-            Pin<'B', 14>,
-            Pin<'B', 15, Alternate>,
-        )>,
-        OutputPinWrapper<'B', 12>,
-        Mono,
-    >,
-    FakeTimeSource,
-    2,
-    2,
-    1,
->;
-pub type File<'a> = sdmmc::File<
-    'a,
-    sdmmc::SdCard<
-        SpiWrapper<(
-            Pin<'B', 13, Alternate>,
-            Pin<'B', 14>,
-            Pin<'B', 15, Alternate>,
-        )>,
-        OutputPinWrapper<'B', 12>,
-        Mono,
-    >,
-    FakeTimeSource,
-    2,
-    2,
-    1,
->;
+pub type VolumeManager = sdmmc::VolumeManager<SdCard, FakeTimeSource, 2, 2>;
+pub type Volume<'a> = sdmmc::Volume<'a, SdCard, FakeTimeSource, 2, 2, 1>;
+pub type Directory<'a> = sdmmc::Directory<'a, SdCard, FakeTimeSource, 2, 2, 1>;
+pub type File<'a> = sdmmc::File<'a, SdCard, FakeTimeSource, 2, 2, 1>;
 
 pub fn decode_hex(s: &str) -> Result<Vec<u8, 8>, ()> {
     if s.len() % 2 != 0 {
