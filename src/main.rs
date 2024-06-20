@@ -190,7 +190,12 @@ mod app {
         }
     }
 
-    #[task(binds = USB_HP_CAN_TX, shared = [can], local = [can_tx_consumer])]
+    #[task(
+        binds = USB_HP_CAN_TX,
+        priority = 3,
+        shared = [can],
+        local = [can_tx_consumer]
+    )]
     fn can_sender(cx: can_sender::Context) {
         let mut can = cx.shared.can;
         let tx_queue = cx.local.can_tx_consumer;
@@ -218,7 +223,11 @@ mod app {
         });
     }
 
-    #[task(binds = USB_LP_CAN_RX0, shared = [can, can_tx_producer])]
+    #[task(
+        binds = USB_LP_CAN_RX0,
+        priority = 3,
+        shared = [can, can_tx_producer]
+    )]
     fn can_receiver(cx: can_receiver::Context) {
         (cx.shared.can, cx.shared.can_tx_producer).lock(|can, tx_queue| {
             while let Ok(frame) = can.bus.receive() {
@@ -234,7 +243,7 @@ mod app {
         binds = EXTI4,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 2
+        priority = 20
     )]
     fn clicked_ok(cx: clicked_ok::Context) {
         cx.shared.controller.button_ok.clear_interrupt_pending_bit();
@@ -243,14 +252,14 @@ mod app {
         };
 
         rprintln!("Pressed OK");
-        read_file::spawn().unwrap();
+        // read_file::spawn().unwrap();
     }
 
     #[task(
         binds = EXTI0,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 2
+        priority = 20
     )]
     fn clicked_up(cx: clicked_up::Context) {
         cx.shared.controller.button_up.clear_interrupt_pending_bit();
@@ -265,7 +274,7 @@ mod app {
         binds = EXTI1,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 2
+        priority = 20
     )]
     fn clicked_down(cx: clicked_down::Context) {
         cx.shared
@@ -283,7 +292,7 @@ mod app {
         binds = EXTI2,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 2
+        priority = 20
     )]
     fn clicked_right(cx: clicked_right::Context) {
         cx.shared
@@ -301,7 +310,7 @@ mod app {
         binds = EXTI3,
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
         shared = [controller],
-        priority = 2
+        priority = 20
     )]
     fn clicked_left(cx: clicked_left::Context) {
         cx.shared
