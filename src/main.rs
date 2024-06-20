@@ -31,8 +31,9 @@ mod app {
     use crate::{buttons::*, can::*, spi::*, status::*};
 
     pub const CAN_TX_CAPACITY: usize = 8;
+    pub const CLOCK_RATE_MHZ: u32 = 8;
     pub const TICK_RATE: u32 = 1_000;
-    pub const DEBOUNCE_DELAY_MS: u32 = 20;
+    pub const DEBOUNCE_DELAY_MS: u32 = 10;
 
     systick_monotonic!(Mono, TICK_RATE);
 
@@ -75,8 +76,11 @@ mod app {
         let mut flash = cx.device.FLASH.constrain();
         let rcc = cx.device.RCC.constrain();
 
-        let clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
-        Mono::start(cx.core.SYST, 8_000_000);
+        let clocks = rcc
+            .cfgr
+            .use_hse(CLOCK_RATE_MHZ.MHz())
+            .freeze(&mut flash.acr);
+        Mono::start(cx.core.SYST, CLOCK_RATE_MHZ * 1_000_000);
 
         let mut gpioa = cx.device.GPIOA.split();
         let mut gpiob = cx.device.GPIOB.split();
