@@ -23,7 +23,7 @@ impl CanContext {
         can_instance.assign_pins((tx, rx), mapr);
 
         let mut can_bus = bxcan::Can::builder(can_instance)
-            .set_bit_timing(0x001c_0003)
+            .set_bit_timing(Bitrate::default().as_bit_timing())
             .leave_disabled();
         can_bus
             .modify_filters()

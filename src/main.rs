@@ -13,11 +13,15 @@ mod status;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2])]
 mod app {
+
     use bxcan::Frame;
     use cortex_m::asm;
     use embedded_sdmmc as sdmmc;
     use fugit::Instant;
     use heapless::spsc::{Consumer, Producer, Queue};
+        spsc::{Consumer, Producer, Queue},
+        String, Vec,
+    };
     use rtic_monotonics::systick::prelude::*;
     use rtt_target::{rprintln, rtt_init_print};
     use stm32f1xx_hal::{
@@ -31,10 +35,12 @@ mod app {
 
     use crate::{buttons::*, can::*, sd::*, spi::*, status::*};
 
-    pub const CAN_TX_CAPACITY: usize = 8;
+    pub const CAN_QUEUES_CAPACITY: usize = 8;
     pub const CLOCK_RATE_MHZ: u32 = 8;
     pub const TICK_RATE: u32 = 1_000;
     pub const DEBOUNCE_DELAY_MS: u32 = 10;
+
+    const ACK_INCOMING: bool = true; // TODO : make parameter
 
     systick_monotonic!(Mono, TICK_RATE);
 
@@ -43,18 +49,21 @@ mod app {
         can: CanContext,
         #[lock_free]
         controller: Controller,
-        can_tx_producer: Producer<'static, Frame, CAN_TX_CAPACITY>,
         status: CanaryStatus,
         volume_manager: VolumeManager,
     }
 
     #[local]
     struct Local {
-        can_tx_consumer: Consumer<'static, Frame, CAN_TX_CAPACITY>,
         status_led: Pin<'C', 13, Output>,
     }
 
-    #[init(local = [q: Queue<Frame, CAN_TX_CAPACITY> = Queue::new(),])]
+    #[init(
+        local = [
+            q_tx: Queue<Frame, CAN_QUEUES_CAPACITY> = Queue::new(),
+            q_rx: Queue<Frame, CAN_QUEUES_CAPACITY> = Queue::new(),
+        ]
+    )]
     fn init(mut cx: init::Context) -> (Shared, Local) {
         rtt_init_print!();
         rprintln!("Initializing...");
@@ -85,8 +94,9 @@ mod app {
         can.enable_interrupts();
         can.enable_non_blocking();
 
-        // Init CAN TX queue
-        let (can_tx_producer, can_tx_consumer) = cx.local.q.split();
+        // Init CAN TX & RX queues
+        let (can_tx_producer, can_tx_consumer) = cx.local.q_tx.split();
+        let (can_rx_producer, can_rx_consumer) = cx.local.q_rx.split();
 
         // Init buttons
         let (_pa15, _pb3, pb4) = afio.mapr.disable_jtag(gpioa.pa15, gpiob.pb3, gpiob.pb4);
@@ -138,12 +148,14 @@ mod app {
             Shared {
                 can,
                 controller,
-                can_tx_producer,
                 status,
                 volume_manager,
+                can_tx_producer,
             },
             Local {
                 can_tx_consumer,
+                can_rx_producer,
+                can_rx_consumer,
                 status_led,
             },
         )
@@ -208,13 +220,12 @@ mod app {
 
     #[task(binds = USB_LP_CAN_RX0, shared = [can, can_tx_producer])]
     fn can_receiver(cx: can_receiver::Context) {
-        let can = cx.shared.can;
-        let tx_queue = cx.shared.can_tx_producer;
-
-        (can, tx_queue).lock(|can, tx_queue| {
+        (cx.shared.can, cx.shared.can_tx_producer).lock(|can, tx_queue| {
             while let Ok(frame) = can.bus.receive() {
                 rprintln!("Received {:?}", frame);
-                let _ = enqueue_frame(tx_queue, frame);
+                if ACK_INCOMING {
+                    let _ = enqueue_frame(tx_queue, frame);
+                }
             }
         });
     }
@@ -232,6 +243,7 @@ mod app {
         };
 
         rprintln!("Pressed OK");
+        read_file::spawn().unwrap();
     }
 
     #[task(
@@ -301,5 +313,35 @@ mod app {
         };
 
         rprintln!("Pressed LEFT");
+    }
+
+    #[task(priority = 1, shared = [volume_manager])]
+    async fn read_file(mut cx: read_file::Context) {
+        cx.shared.volume_manager.lock(|vm| {
+            let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
+            let mut root_dir = sd_volume.open_root_dir().unwrap();
+            let in_logs = CanLogsInterator::new(
+                root_dir
+                    .open_file_in_dir("boot.log", sdmmc::Mode::ReadOnly)
+                    .unwrap(),
+            );
+
+            let frames: Vec<Frame, 32> = in_logs.collect();
+
+            let mut file_name = String::<12>::new();
+            file_name
+                .write_fmt(format_args!("{:08}.log", Mono::now().ticks()))
+                .unwrap();
+            let mut out_logs = root_dir
+                .open_file_in_dir(&file_name[..], sdmmc::Mode::ReadWriteCreateOrTruncate)
+                .unwrap();
+
+            let _ = frames
+                .iter()
+                .map(|f| out_logs.write(frame_to_log(f).as_bytes()).unwrap())
+                .collect::<()>();
+
+            rprintln!("done");
+        })
     }
 }
