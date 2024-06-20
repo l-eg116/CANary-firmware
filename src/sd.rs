@@ -113,14 +113,14 @@ pub fn frame_to_log(frame: &Frame) -> String<LOG_LINE_LEN> {
                 bxcan::Id::Standard(n) => n.as_raw() as u32,
                 bxcan::Id::Extended(n) => n.as_raw(),
             },
-            frame_data[0],
-            frame_data[1],
-            frame_data[2],
-            frame_data[3],
-            frame_data[4],
-            frame_data[5],
-            frame_data[6],
-            frame_data[7],
+            frame_data.get(0).unwrap_or(&0xFF),
+            frame_data.get(1).unwrap_or(&0xFF),
+            frame_data.get(2).unwrap_or(&0xFF),
+            frame_data.get(3).unwrap_or(&0xFF),
+            frame_data.get(4).unwrap_or(&0xFF),
+            frame_data.get(5).unwrap_or(&0xFF),
+            frame_data.get(6).unwrap_or(&0xFF),
+            frame_data.get(7).unwrap_or(&0xFF),
         ))
         .expect("frame should fit in line");
 
