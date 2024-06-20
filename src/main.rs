@@ -7,6 +7,7 @@ use rtic::app;
 
 mod buttons;
 mod can;
+mod sd;
 mod spi;
 mod status;
 
@@ -22,13 +23,13 @@ mod app {
     use stm32f1xx_hal::{
         can::Can,
         flash::FlashExt,
-        gpio::{Alternate, ExtiPin, Output, Pin},
+        gpio::{ExtiPin, Output, Pin},
         prelude::*,
         rcc::RccExt,
         spi::{Mode, Phase, Polarity, Spi},
     };
 
-    use crate::{buttons::*, can::*, spi::*, status::*};
+    use crate::{buttons::*, can::*, sd::*, spi::*, status::*};
 
     pub const CAN_TX_CAPACITY: usize = 8;
     pub const CLOCK_RATE_MHZ: u32 = 8;
@@ -44,21 +45,7 @@ mod app {
         controller: Controller,
         can_tx_producer: Producer<'static, Frame, CAN_TX_CAPACITY>,
         status: CanaryStatus,
-        #[lock_free]
-        volume_manager: sdmmc::VolumeManager<
-            sdmmc::SdCard<
-                SpiWrapper<(
-                    Pin<'B', 13, Alternate>,
-                    Pin<'B', 14>,
-                    Pin<'B', 15, Alternate>,
-                )>,
-                OutputPinWrapper<'B', 12>,
-                Mono,
-            >,
-            FakeTimeSource,
-            2,
-            2,
-        >,
+        volume_manager: VolumeManager,
     }
 
     #[local]
@@ -131,7 +118,7 @@ mod app {
                         phase: Phase::CaptureOnSecondTransition,
                         polarity: Polarity::IdleHigh,
                     },
-                    400.kHz(),
+                    1.MHz(),
                     clocks,
                 ),
             };
