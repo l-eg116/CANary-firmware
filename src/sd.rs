@@ -1,15 +1,18 @@
+use core::fmt::Write;
 use core::str::FromStr;
 
 use bxcan::{Frame, StandardId};
 use embedded_sdmmc::{self as sdmmc};
 use heapless::{String, Vec};
-use rtt_target::rprintln;
+use rtic_monotonics::Monotonic;
 use stm32f1xx_hal::gpio::{Alternate, Pin};
 
 use crate::app::Mono;
 use crate::spi::*;
 
-// Note : the buffer should be at least 45 bytes since it's the number of characters in a standard can log file
+// Note : for performances the buffer should be at least 46 bytes since it's the
+// number of characters in a standard can log file (including '\n')
+const LOG_LINE_LEN: usize = 46;
 const READ_BUFFER_SIZE: usize = 64;
 const STORE_BUFFER_SIZE: usize = READ_BUFFER_SIZE * 2;
 
@@ -127,4 +130,32 @@ impl Iterator for CanLogsInterator<'_> {
         }
         None
     }
+}
+
+pub fn frame_to_log(frame: &Frame) -> String<LOG_LINE_LEN> {
+    let mut log_line = String::<LOG_LINE_LEN>::new();
+
+    let _empty = bxcan::Data::empty();
+    let frame_data = frame.data().unwrap_or(&_empty);
+
+    log_line
+        .write_fmt(format_args!(
+            "({:010}.000000) can0 {:03X}#{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}\n",
+            Mono::now().ticks(),
+            match frame.id() {
+                bxcan::Id::Standard(n) => n.as_raw() as u32,
+                bxcan::Id::Extended(n) => n.as_raw(),
+            },
+            frame_data[0],
+            frame_data[1],
+            frame_data[2],
+            frame_data[3],
+            frame_data[4],
+            frame_data[5],
+            frame_data[6],
+            frame_data[7],
+        ))
+        .expect("frame should fit in line");
+
+    log_line
 }
