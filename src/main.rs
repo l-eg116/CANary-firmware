@@ -175,7 +175,7 @@ mod app {
         }
     }
 
-    #[task(local = [status_led], shared = [status], priority = 1)]
+    #[task(priority = 1, shared = [status], local = [status_led])]
     async fn blinker(mut cx: blinker::Context) {
         loop {
             Mono::delay(cx.shared.status.lock(|status| match status {
@@ -252,9 +252,9 @@ mod app {
 
     #[task(
         binds = EXTI4,
-        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        priority = 8,
         shared = [controller],
-        priority = 8
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_ok(cx: clicked_ok::Context) {
         cx.shared.controller.button_ok.clear_interrupt_pending_bit();
@@ -268,9 +268,9 @@ mod app {
 
     #[task(
         binds = EXTI0,
-        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        priority = 8,
         shared = [controller],
-        priority = 8
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_up(cx: clicked_up::Context) {
         cx.shared.controller.button_up.clear_interrupt_pending_bit();
@@ -287,9 +287,9 @@ mod app {
 
     #[task(
         binds = EXTI1,
-        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
-        priority = 20
+        priority = 8,
         shared = [controller, stop_listening],
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_down(mut cx: clicked_down::Context) {
         cx.shared
@@ -306,9 +306,9 @@ mod app {
 
     #[task(
         binds = EXTI2,
-        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
+        priority = 8,
         shared = [controller],
-        priority = 8
+        local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_right(cx: clicked_right::Context) {
         cx.shared
