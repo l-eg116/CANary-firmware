@@ -7,10 +7,10 @@ use rtic::app;
 
 mod buttons;
 mod can;
+mod display;
 mod sd;
 mod spi;
 mod status;
-mod display;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2, TIM3, TIM4])]
 mod app {

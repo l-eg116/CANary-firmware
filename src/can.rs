@@ -142,15 +142,15 @@ impl Bitrate {
     pub fn decrement(&mut self) {
         match self {
             Bitrate::Br1000kbps => *self = Bitrate::Br800kbps,
-            Bitrate::Br800kbps =>  *self = Bitrate::Br500kbps,
-            Bitrate::Br500kbps =>  *self = Bitrate::Br250kbps,
-            Bitrate::Br250kbps =>  *self = Bitrate::Br125kbps,
-            Bitrate::Br125kbps => *self = Bitrate::Br100kbps, 
-            Bitrate::Br100kbps => *self = Bitrate::Br83kbps, 
-            Bitrate::Br83kbps =>  *self = Bitrate::Br50kbps,
-            Bitrate::Br50kbps =>  *self = Bitrate::Br20kbps,
-            Bitrate::Br20kbps =>  *self = Bitrate::Br10kbps,
-            Bitrate::Br10kbps =>  *self = Bitrate::Br1000kbps,
+            Bitrate::Br800kbps => *self = Bitrate::Br500kbps,
+            Bitrate::Br500kbps => *self = Bitrate::Br250kbps,
+            Bitrate::Br250kbps => *self = Bitrate::Br125kbps,
+            Bitrate::Br125kbps => *self = Bitrate::Br100kbps,
+            Bitrate::Br100kbps => *self = Bitrate::Br83kbps,
+            Bitrate::Br83kbps => *self = Bitrate::Br50kbps,
+            Bitrate::Br50kbps => *self = Bitrate::Br20kbps,
+            Bitrate::Br20kbps => *self = Bitrate::Br10kbps,
+            Bitrate::Br10kbps => *self = Bitrate::Br1000kbps,
         }
     }
 }
