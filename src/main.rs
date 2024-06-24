@@ -37,7 +37,7 @@ mod app {
     use crate::{buttons::*, can::*, sd::*, spi::*, status::*};
 
     pub const CAN_QUEUES_CAPACITY: usize = 8;
-    pub const CLOCK_RATE_MHZ: u32 = 8;
+    pub const CLOCK_RATE_MHZ: u32 = 64;
     pub const TICK_RATE: u32 = 1_000;
     pub const DEBOUNCE_DELAY_MS: u32 = 10;
 
@@ -80,7 +80,11 @@ mod app {
 
         let clocks = rcc
             .cfgr
-            .use_hse(CLOCK_RATE_MHZ.MHz())
+            .use_hse(8.MHz())
+            .sysclk(CLOCK_RATE_MHZ.MHz())
+            .hclk(CLOCK_RATE_MHZ.MHz())
+            .pclk1(16.MHz())
+            .pclk2(CLOCK_RATE_MHZ.MHz())
             .freeze(&mut flash.acr);
         Mono::start(cx.core.SYST, CLOCK_RATE_MHZ * 1_000_000);
 
@@ -134,7 +138,7 @@ mod app {
                         phase: Phase::CaptureOnSecondTransition,
                         polarity: Polarity::IdleHigh,
                     },
-                    1.MHz(),
+                    2.MHz(),
                     clocks,
                 ),
             };

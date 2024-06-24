@@ -94,18 +94,19 @@ impl Bitrate {
     }
 
     // Bit timings calculated with http://www.bittiming.can-wiki.info/
+    // Bit timings are calculated for PCLK1 = 16MHz
     fn as_bit_timing(&self) -> u32 {
         match self {
-            Bitrate::Br1000kbps => 0x00050000,
-            Bitrate::Br800kbps => 0x00070000,
-            Bitrate::Br500kbps => 0x001c0000,
-            Bitrate::Br250kbps => 0x001c0001,
-            Bitrate::Br125kbps => 0x001c0003,
-            Bitrate::Br100kbps => 0x001c0004,
-            Bitrate::Br83kbps => 0x001c0005,
-            Bitrate::Br50kbps => 0x001c0009,
-            Bitrate::Br20kbps => 0x001c0018,
-            Bitrate::Br10kbps => 0x001c0031,
+            Bitrate::Br1000kbps => 0x001c0000,
+            Bitrate::Br800kbps => 0x00070001,
+            Bitrate::Br500kbps => 0x001c0001,
+            Bitrate::Br250kbps => 0x001c0003,
+            Bitrate::Br125kbps => 0x001c0007,
+            Bitrate::Br100kbps => 0x001c0009,
+            Bitrate::Br83kbps => 0x001c000b,
+            Bitrate::Br50kbps => 0x001c0013,
+            Bitrate::Br20kbps => 0x001c0031,
+            Bitrate::Br10kbps => 0x001c0063,
         }
     }
 
