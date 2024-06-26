@@ -19,7 +19,7 @@ impl CanContext {
         rx: Pin<'B', 8>,
         tx: Pin<'B', 9, Alternate>,
         mapr: &mut afio::MAPR,
-    ) -> CanContext {
+    ) -> Self {
         can_instance.assign_pins((tx, rx), mapr);
 
         let mut can_bus = bxcan::Can::builder(can_instance)
@@ -29,7 +29,7 @@ impl CanContext {
             .modify_filters()
             .enable_bank(0, Fifo::Fifo0, Mask32::accept_all());
 
-        CanContext {
+        Self {
             bitrate: Bitrate::default(),
             bus: can_bus,
         }
@@ -89,69 +89,69 @@ pub enum Bitrate {
 }
 
 impl Bitrate {
-    pub fn default() -> Bitrate {
-        Bitrate::Br125kbps
+    pub fn default() -> Self {
+        Self::Br125kbps
     }
 
     // Bit timings calculated with http://www.bittiming.can-wiki.info/
     // Bit timings are calculated for PCLK1 = 16MHz
     fn as_bit_timing(&self) -> u32 {
         match self {
-            Bitrate::Br1000kbps => 0x001c0000,
-            Bitrate::Br800kbps => 0x00070001,
-            Bitrate::Br500kbps => 0x001c0001,
-            Bitrate::Br250kbps => 0x001c0003,
-            Bitrate::Br125kbps => 0x001c0007,
-            Bitrate::Br100kbps => 0x001c0009,
-            Bitrate::Br83kbps => 0x001c000b,
-            Bitrate::Br50kbps => 0x001c0013,
-            Bitrate::Br20kbps => 0x001c0031,
-            Bitrate::Br10kbps => 0x001c0063,
+            Self::Br1000kbps => 0x001c0000,
+            Self::Br800kbps => 0x00070001,
+            Self::Br500kbps => 0x001c0001,
+            Self::Br250kbps => 0x001c0003,
+            Self::Br125kbps => 0x001c0007,
+            Self::Br100kbps => 0x001c0009,
+            Self::Br83kbps => 0x001c000b,
+            Self::Br50kbps => 0x001c0013,
+            Self::Br20kbps => 0x001c0031,
+            Self::Br10kbps => 0x001c0063,
         }
     }
 
     fn as_u32(&self) -> u32 {
         match self {
-            Bitrate::Br1000kbps => 1_000_000,
-            Bitrate::Br800kbps => 800_000,
-            Bitrate::Br500kbps => 500_000,
-            Bitrate::Br250kbps => 250_000,
-            Bitrate::Br125kbps => 125_000,
-            Bitrate::Br100kbps => 100_000,
-            Bitrate::Br83kbps => 83_333,
-            Bitrate::Br50kbps => 50_000,
-            Bitrate::Br20kbps => 20_000,
-            Bitrate::Br10kbps => 10_000,
+            Self::Br1000kbps => 1_000_000,
+            Self::Br800kbps => 800_000,
+            Self::Br500kbps => 500_000,
+            Self::Br250kbps => 250_000,
+            Self::Br125kbps => 125_000,
+            Self::Br100kbps => 100_000,
+            Self::Br83kbps => 83_333,
+            Self::Br50kbps => 50_000,
+            Self::Br20kbps => 20_000,
+            Self::Br10kbps => 10_000,
         }
     }
 
     pub fn increment(&mut self) {
         match self {
-            Bitrate::Br1000kbps => *self = Bitrate::Br10kbps,
-            Bitrate::Br800kbps => *self = Bitrate::Br1000kbps,
-            Bitrate::Br500kbps => *self = Bitrate::Br800kbps,
-            Bitrate::Br250kbps => *self = Bitrate::Br500kbps,
-            Bitrate::Br125kbps => *self = Bitrate::Br250kbps,
-            Bitrate::Br100kbps => *self = Bitrate::Br125kbps,
-            Bitrate::Br83kbps => *self = Bitrate::Br100kbps,
-            Bitrate::Br50kbps => *self = Bitrate::Br83kbps,
-            Bitrate::Br20kbps => *self = Bitrate::Br50kbps,
-            Bitrate::Br10kbps => *self = Bitrate::Br20kbps,
+            Self::Br1000kbps => *self = Self::Br10kbps,
+            Self::Br800kbps => *self = Self::Br1000kbps,
+            Self::Br500kbps => *self = Self::Br800kbps,
+            Self::Br250kbps => *self = Self::Br500kbps,
+            Self::Br125kbps => *self = Self::Br250kbps,
+            Self::Br100kbps => *self = Self::Br125kbps,
+            Self::Br83kbps => *self = Self::Br100kbps,
+            Self::Br50kbps => *self = Self::Br83kbps,
+            Self::Br20kbps => *self = Self::Br50kbps,
+            Self::Br10kbps => *self = Self::Br20kbps,
         }
     }
 
     pub fn decrement(&mut self) {
         match self {
-            Bitrate::Br1000kbps => *self = Bitrate::Br800kbps,
-            Bitrate::Br800kbps => *self = Bitrate::Br500kbps,
-            Bitrate::Br500kbps => *self = Bitrate::Br250kbps,
-            Bitrate::Br250kbps => *self = Bitrate::Br125kbps,
-            Bitrate::Br125kbps => *self = Bitrate::Br100kbps,
-            Bitrate::Br100kbps => *self = Bitrate::Br83kbps,
-            Bitrate::Br83kbps => *self = Bitrate::Br50kbps,
-            Bitrate::Br50kbps => *self = Bitrate::Br20kbps,
-            Bitrate::Br20kbps => *self = Bitrate::Br10kbps,
-            Bitrate::Br10kbps => *self = Bitrate::Br1000kbps,
+            Self::Br1000kbps => *self = Self::Br800kbps,
+            Self::Br800kbps => *self = Self::Br500kbps,
+            Self::Br500kbps => *self = Self::Br250kbps,
+            Self::Br250kbps => *self = Self::Br125kbps,
+            Self::Br125kbps => *self = Self::Br100kbps,
+            Self::Br100kbps => *self = Self::Br83kbps,
+            Self::Br83kbps => *self = Self::Br50kbps,
+            Self::Br50kbps => *self = Self::Br20kbps,
+            Self::Br20kbps => *self = Self::Br10kbps,
+            Self::Br10kbps => *self = Self::Br1000kbps,
         }
     }
 }

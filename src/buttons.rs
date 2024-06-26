@@ -92,8 +92,8 @@ pub struct ControllerState {
 }
 
 impl ControllerState {
-    pub fn default() -> ControllerState {
-        ControllerState {
+    pub fn default() -> Self {
+        Self {
             ok_pressed: false,
             up_pressed: false,
             down_pressed: false,

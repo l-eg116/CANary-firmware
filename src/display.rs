@@ -36,8 +36,8 @@ struct Home {
 }
 
 impl Home {
-    pub fn default() -> Home {
-        Home {
+    pub fn default() -> Self {
+        Self {
             selected_item: HomeItems::None,
         }
     }
@@ -83,8 +83,8 @@ struct FrameEmission {
 }
 
 impl FrameEmission {
-    pub fn default() -> FrameEmission {
-        FrameEmission {
+    pub fn default() -> Self {
+        Self {
             frame_count: 1,
             is_sending_frames: false,
         }
@@ -129,8 +129,8 @@ struct FrameEmissionSettings {
 }
 
 impl FrameEmissionSettings {
-    pub fn default() -> FrameEmissionSettings {
-        FrameEmissionSettings {
+    pub fn default() -> Self {
+        Self {
             selected_item: FrameEmissionSettingsItems::Bitrate,
         }
     }
@@ -200,8 +200,8 @@ struct FrameCapture {
 }
 
 impl FrameCapture {
-    pub fn default() -> FrameCapture {
-        FrameCapture { is_silent: false }
+    pub fn default() -> Self {
+        Self { is_silent: false }
     }
 }
 
