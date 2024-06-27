@@ -398,6 +398,7 @@ mod app {
 
             while !stop_flag.lock(|f| *f) {
                 if let Some(frame) = rx_queue.dequeue() {
+                    rprintln!("Writing {:?}", frame);
                     logs.write(frame_to_log(&frame).as_bytes()).unwrap();
                 }
             }
