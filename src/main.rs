@@ -36,12 +36,11 @@ mod app {
 
     use crate::{buttons::*, can::*, sd::*, spi::*, status::*};
 
-    pub const CAN_QUEUES_CAPACITY: usize = 8;
+    pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
+    pub const SD_RX_QUEUE_CAPACITY: usize = 64;
     pub const CLOCK_RATE_MHZ: u32 = 64;
     pub const TICK_RATE: u32 = 1_000;
     pub const DEBOUNCE_DELAY_MS: u32 = 10;
-
-    const ACK_INCOMING: bool = true; // TODO : make parameter
 
     systick_monotonic!(Mono, TICK_RATE);
 
@@ -50,7 +49,6 @@ mod app {
         can: CanContext,
         #[lock_free]
         controller: Controller,
-        can_tx_producer: Producer<'static, Frame, CAN_QUEUES_CAPACITY>,
         status: CanaryStatus,
         volume_manager: VolumeManager,
         stop_listening: bool, // TODO : make parameter
@@ -58,16 +56,17 @@ mod app {
 
     #[local]
     struct Local {
-        can_tx_consumer: Consumer<'static, Frame, CAN_QUEUES_CAPACITY>,
-        can_rx_producer: Producer<'static, Frame, CAN_QUEUES_CAPACITY>,
-        can_rx_consumer: Consumer<'static, Frame, CAN_QUEUES_CAPACITY>,
+        can_tx_producer: Producer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
+        can_tx_consumer: Consumer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
+        can_rx_producer: Producer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
+        can_rx_consumer: Consumer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
         status_led: Pin<'C', 13, Output>,
     }
 
     #[init(
         local = [
-            q_tx: Queue<Frame, CAN_QUEUES_CAPACITY> = Queue::new(),
-            q_rx: Queue<Frame, CAN_QUEUES_CAPACITY> = Queue::new(),
+            q_tx: Queue<Frame, CAN_TX_QUEUE_CAPACITY> = Queue::new(),
+            q_rx: Queue<Frame, SD_RX_QUEUE_CAPACITY> = Queue::new(),
         ]
     )]
     fn init(mut cx: init::Context) -> (Shared, Local) {
@@ -94,10 +93,11 @@ mod app {
         let mut afio = cx.device.AFIO.constrain();
 
         // Init CAN bus
+        rprintln!("-> CAN bus");
         let mut can = CanContext::new(
             Can::new(cx.device.CAN1, cx.device.USB),
-            gpiob.pb8.into_floating_input(&mut gpiob.crh), // rx
-            gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh), // tx
+            gpiob.pb8.into_floating_input(&mut gpiob.crh), // can rx
+            gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh), // can tx
             &mut afio.mapr,
         );
         can.set_bitrate(Bitrate::Br125kbps);
@@ -109,6 +109,7 @@ mod app {
         let (can_rx_producer, can_rx_consumer) = cx.local.q_rx.split();
 
         // Init buttons
+        rprintln!("-> Buttons");
         let (_pa15, _pb3, pb4) = afio.mapr.disable_jtag(gpioa.pa15, gpiob.pb3, gpiob.pb4);
         let mut controller = Controller {
             button_ok: pb4.into_pull_up_input(&mut gpiob.crl),
@@ -120,11 +121,13 @@ mod app {
         controller.enable_interrupts(&mut afio, &mut cx.device.EXTI);
 
         // Init status LED
+        rprintln!("-> LED");
         let status_led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
         let status = CanaryStatus::Idle;
         blinker::spawn().unwrap();
 
         // Init SD Card
+        rprintln!("-> SD Card");
         let volume_manager = {
             let sd_spi = SpiWrapper {
                 spi: Spi::spi2(
@@ -160,10 +163,10 @@ mod app {
                 controller,
                 status,
                 volume_manager,
-                can_tx_producer,
                 stop_listening: false,
             },
             Local {
+                can_tx_producer,
                 can_tx_consumer,
                 can_rx_producer,
                 can_rx_consumer,
@@ -180,7 +183,7 @@ mod app {
         }
     }
 
-    #[task(priority = 1, shared = [status], local = [status_led])]
+    #[task(priority = 1, shared = [status], local = [status_led])] // TODO : change priorities
     async fn blinker(mut cx: blinker::Context) {
         loop {
             Mono::delay(cx.shared.status.lock(|status| match status {
@@ -236,20 +239,19 @@ mod app {
 
     #[task(
         binds = USB_LP_CAN_RX0,
-        priority = 3,
-        shared = [can, can_tx_producer],
+        priority = 5,
+        shared = [can],
         local = [can_rx_producer],
     )]
-    fn can_receiver(cx: can_receiver::Context) {
-        (cx.shared.can, cx.shared.can_tx_producer).lock(|can, tx_queue| {
-            while let Ok(frame) = can.bus.receive() {
+    fn can_receiver(mut cx: can_receiver::Context) {
+        let rx_queue = cx.local.can_rx_producer;
+        cx.shared.can.lock(|can| {
+            if let Ok(frame) = can.bus.receive() {
                 rprintln!("Received {:?}", frame);
-                cx.local
-                    .can_rx_producer
-                    .enqueue(frame.clone())
-                    .expect("there is space is the queue"); // TODO
-                if ACK_INCOMING {
-                    let _ = enqueue_frame(tx_queue, frame);
+                if rx_queue.ready() {
+                    rx_queue.enqueue(frame).expect("rx_queue is ready");
+                } else {
+                    rprintln!("WARNING - Couldn't queue a frame for writing");
                 }
             }
         });
@@ -347,10 +349,12 @@ mod app {
 
     #[task(
         priority = 2,
-        shared = [volume_manager, can_tx_producer],
+        shared = [volume_manager],
+        local = [can_tx_producer],
     )]
-    async fn sd_reader(cx: sd_reader::Context, file_name: &str) {
-        (cx.shared.volume_manager, cx.shared.can_tx_producer).lock(|vm, tx_queue| {
+    async fn sd_reader(mut cx: sd_reader::Context, file_name: &str) {
+        let tx_queue = cx.local.can_tx_producer;
+        cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut root_dir = sd_volume.open_root_dir().unwrap();
             let logs = CanLogsInterator::new(
@@ -367,14 +371,17 @@ mod app {
     }
 
     #[task(
-        priority = 2,
+        priority = 1,
         shared = [volume_manager, stop_listening],
         local = [can_rx_consumer],
     )]
     async fn sd_writer(mut cx: sd_writer::Context) {
+        let mut stop_flag = cx.shared.stop_listening;
         let rx_queue = cx.local.can_rx_consumer;
-        rprintln!("started writing");
-        cx.shared.stop_listening.lock(|f| *f = false);
+
+        stop_flag.lock(|f| *f = false);
+        while let Some(_) = rx_queue.dequeue() {} // Empting queue
+
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut root_dir = sd_volume.open_root_dir().unwrap();
@@ -387,13 +394,15 @@ mod app {
                 .open_file_in_dir(&file_name[..], sdmmc::Mode::ReadWriteCreateOrTruncate)
                 .unwrap();
 
-            while !cx.shared.stop_listening.lock(|f| *f) {
+            rprintln!("Writing started to '{}'", file_name);
+
+            while !stop_flag.lock(|f| *f) {
                 if let Some(frame) = rx_queue.dequeue() {
                     logs.write(frame_to_log(&frame).as_bytes()).unwrap();
                 }
             }
         });
-        rprintln!("stoped writing");
-        cx.shared.stop_listening.lock(|f| *f = false);
+        stop_flag.lock(|f| *f = false);
+        rprintln!("Writing stopped");
     }
 }
