@@ -60,7 +60,7 @@ mod app {
         can_tx_consumer: Consumer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
         can_rx_producer: Producer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
         can_rx_consumer: Consumer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
-        status_led: Pin<'C', 13, Output>,
+        status_led: Pin<'C', 15, Output>,
     }
 
     #[init(
@@ -122,7 +122,7 @@ mod app {
 
         // Init status LED
         rprintln!("-> LED");
-        let status_led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
+        let status_led = gpioc.pc15.into_push_pull_output(&mut gpioc.crh);
         let status = CanaryStatus::Idle;
         blinker::spawn().unwrap();
 
@@ -183,7 +183,11 @@ mod app {
         }
     }
 
-    #[task(priority = 1, shared = [status], local = [status_led])] // TODO : change priorities
+    #[task(
+        priority = 1,
+        shared = [status],
+        local = [status_led],
+    )]
     async fn blinker(mut cx: blinker::Context) {
         loop {
             Mono::delay(cx.shared.status.lock(|status| match status {
@@ -399,7 +403,9 @@ mod app {
             while !stop_flag.lock(|f| *f) {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
-                    logs.write(frame_to_log(&frame).as_bytes()).unwrap();
+                    if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
+                        rprintln!("Got error on writing ");
+                    };
                 }
             }
         });
