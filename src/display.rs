@@ -22,15 +22,16 @@ trait DisplayScreen {}
 // ############
 // ### HOME ###
 // ############
+struct Home {
+    pub selected_item: HomeItems,
+}
+impl DisplayScreen for Home {}
+
 enum HomeItems {
     None,
     Emit,
     Capture,
 } //noms non contractuels
-struct Home {
-    pub selected_item: HomeItems,
-}
-impl DisplayScreen for Home {}
 
 impl Home {
     pub fn default() -> Self {
@@ -117,15 +118,14 @@ impl DisplayManager<FrameEmission> {
 // #############################
 // ### FRAMEEMISSIONSETTINGS ###
 // #############################
-enum FrameEmissionSettingsItems {
-    Bitrate,
-    Mode,
-}
-
 struct FrameEmissionSettings {
     pub selected_item: FrameEmissionSettingsItems,
 }
 impl DisplayScreen for FrameEmissionSettings {}
+enum FrameEmissionSettingsItems {
+    Bitrate,
+    Mode,
+}
 
 impl FrameEmissionSettings {
     pub fn default() -> Self {
