@@ -1,10 +1,4 @@
-use crate::can::Bitrate;
-
-enum EmissionMode {
-    WaitACK,
-    NoACK,
-    Loopback,
-}
+use crate::can::{Bitrate, EmissionMode};
 
 struct DisplayManager<S: DisplayScreen> {
     pub current_screen: S,
@@ -17,8 +11,8 @@ impl<S: DisplayScreen> DisplayManager<S> {
     pub fn default() -> DisplayManager<Home> {
         DisplayManager {
             current_screen: Home::default(),
-            bitrate: Bitrate::Br125kbps,
-            mode: EmissionMode::WaitACK,
+            bitrate: Bitrate::default(),
+            mode: EmissionMode::default(),
         }
     }
 }
@@ -126,7 +120,6 @@ impl DisplayManager<FrameEmission> {
 enum FrameEmissionSettingsItems {
     Bitrate,
     Mode,
-    Ok,
 }
 
 struct FrameEmissionSettings {
@@ -149,9 +142,6 @@ impl DisplayManager<FrameEmissionSettings> {
                 self.current_screen.selected_item = FrameEmissionSettingsItems::Mode
             }
             FrameEmissionSettingsItems::Mode => {
-                self.current_screen.selected_item = FrameEmissionSettingsItems::Ok
-            }
-            FrameEmissionSettingsItems::Ok => {
                 self.current_screen.selected_item = FrameEmissionSettingsItems::Bitrate
             }
         }
@@ -160,32 +150,19 @@ impl DisplayManager<FrameEmissionSettings> {
     pub fn right_pressed(&mut self) {
         match self.current_screen.selected_item {
             FrameEmissionSettingsItems::Bitrate => self.bitrate.increment(),
-            FrameEmissionSettingsItems::Mode => match self.mode {
-                EmissionMode::WaitACK => self.mode = EmissionMode::NoACK,
-                EmissionMode::NoACK => self.mode = EmissionMode::Loopback,
-                EmissionMode::Loopback => self.mode = EmissionMode::WaitACK,
-            },
-            _ => (),
+            FrameEmissionSettingsItems::Mode => self.mode.to_next(),
         }
     }
 
     pub fn left_pressed(&mut self) {
         match self.current_screen.selected_item {
             FrameEmissionSettingsItems::Bitrate => self.bitrate.decrement(),
-            FrameEmissionSettingsItems::Mode => match self.mode {
-                EmissionMode::WaitACK => self.mode = EmissionMode::Loopback,
-                EmissionMode::NoACK => self.mode = EmissionMode::WaitACK,
-                EmissionMode::Loopback => self.mode = EmissionMode::NoACK,
-            },
-            _ => (),
+            FrameEmissionSettingsItems::Mode => self.mode.to_next(),
         }
     }
 
     pub fn ok_pressed(&mut self) {
-        match self.current_screen.selected_item {
-            FrameEmissionSettingsItems::Ok => todo!("GOTO FrameEmission"),
-            _ => (),
-        }
+        todo!("GOTO FrameEmission")
     }
 }
 

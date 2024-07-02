@@ -10,6 +10,7 @@ use stm32f1xx_hal::{
 
 pub struct CanContext {
     bitrate: Bitrate,
+    tx_mode: EmissionMode,
     pub bus: bxcan::Can<Can<CAN1>>,
 }
 
@@ -31,6 +32,7 @@ impl CanContext {
 
         Self {
             bitrate: Bitrate::default(),
+            tx_mode: EmissionMode::default(),
             bus: can_bus,
         }
     }
@@ -46,6 +48,27 @@ impl CanContext {
             .modify_config()
             .set_bit_timing(self.bitrate.as_bit_timing())
             .leave_disabled();
+    }
+
+    pub fn tx_mode(&self) -> EmissionMode {
+        self.tx_mode
+    }
+
+    pub fn set_tx_mode(&mut self, tx_mode: EmissionMode) {
+        let bus_config = self.bus.modify_config();
+        self.tx_mode = tx_mode;
+        match self.tx_mode {
+            EmissionMode::AwaitACK => bus_config // Expects some answer on the bus
+                .set_automatic_retransmit(true)
+                .set_loopback(false),
+            EmissionMode::IgnoreACK => bus_config // Expects no answers on the bus
+                .set_automatic_retransmit(false)
+                .set_loopback(false),
+            EmissionMode::Loopback => bus_config // Expects no bus
+                .set_automatic_retransmit(true)
+                .set_loopback(true),
+        }
+        .leave_disabled();
     }
 
     pub fn enable_non_blocking(&mut self) {
@@ -65,8 +88,8 @@ impl CanContext {
     }
 }
 
-pub fn enqueue_frame<'a, const N: usize>(
-    queue: &mut Producer<'a, Frame, N>,
+pub fn enqueue_frame<const N: usize>(
+    queue: &mut Producer<'_, Frame, N>,
     frame: Frame,
 ) -> Result<(), Frame> {
     queue.enqueue(frame)?;
@@ -152,6 +175,35 @@ impl Bitrate {
             Self::Br50kbps => *self = Self::Br20kbps,
             Self::Br20kbps => *self = Self::Br10kbps,
             Self::Br10kbps => *self = Self::Br1000kbps,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum EmissionMode {
+    AwaitACK,
+    IgnoreACK,
+    Loopback,
+}
+
+impl EmissionMode {
+    pub fn default() -> Self {
+        Self::AwaitACK
+    }
+
+    pub fn to_next(&mut self) {
+        match self {
+            Self::AwaitACK => *self = Self::IgnoreACK,
+            Self::IgnoreACK => *self = Self::Loopback,
+            Self::Loopback => *self = Self::AwaitACK,
+        }
+    }
+
+    pub fn to_prev(&mut self) {
+        match self {
+            Self::IgnoreACK => *self = Self::AwaitACK,
+            Self::Loopback => *self = Self::IgnoreACK,
+            Self::AwaitACK => *self = Self::Loopback,
         }
     }
 }
