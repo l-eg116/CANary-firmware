@@ -1,3 +1,7 @@
+use core::fmt::Debug;
+
+use rtt_target::rprintln;
+
 use crate::can::{Bitrate, EmissionMode};
 
 struct DisplayManager<S: DisplayScreen> {
@@ -17,16 +21,22 @@ impl<S: DisplayScreen> DisplayManager<S> {
     }
 }
 
-trait DisplayScreen {}
+trait DisplayScreen: Debug {
+    fn render(&self) {
+        rprintln!("{self:?}");
+    }
+}
 
 // ############
 // ### HOME ###
 // ############
+#[derive(Debug)]
 struct Home {
     pub selected_item: HomeItems,
 }
 impl DisplayScreen for Home {}
 
+#[derive(Debug)]
 enum HomeItems {
     None,
     Emit,
@@ -63,7 +73,7 @@ impl DisplayManager<Home> {
 // ##############################
 // ### EMISSIONFRAMESELECTION ###
 // ##############################
-// enum EmissionFrameSelectionItems {None, DisplayMode}
+#[derive(Debug)]
 struct EmissionFrameSelection {
     // pub selected_item: EmissionFrameSelectionItems
 }
@@ -76,6 +86,7 @@ impl DisplayManager<EmissionFrameSelection> {
 // #####################
 // ### FRAMEEMISSION ###
 // #####################
+#[derive(Debug)]
 struct FrameEmission {
     pub frame_count: u8,
     pub is_sending_frames: bool,
@@ -93,12 +104,12 @@ impl FrameEmission {
 
 impl DisplayManager<FrameEmission> {
     pub fn up_pressed(&mut self) {
-        self.current_screen.frame_count += 1
+        self.current_screen.frame_count += 1;
     }
 
     pub fn down_pressed(&mut self) {
         if self.current_screen.frame_count != 0 {
-            self.current_screen.frame_count -= 1
+            self.current_screen.frame_count -= 1;
         }
     }
 
@@ -111,17 +122,19 @@ impl DisplayManager<FrameEmission> {
     }
 
     pub fn ok_pressed(&mut self) {
-        self.current_screen.is_sending_frames = !self.current_screen.is_sending_frames
+        self.current_screen.is_sending_frames = !self.current_screen.is_sending_frames;
     }
 }
 
 // #############################
 // ### FRAMEEMISSIONSETTINGS ###
 // #############################
+#[derive(Debug)]
 struct FrameEmissionSettings {
     pub selected_item: FrameEmissionSettingsItems,
 }
 impl DisplayScreen for FrameEmissionSettings {}
+#[derive(Debug)]
 enum FrameEmissionSettingsItems {
     Bitrate,
     Mode,
@@ -169,6 +182,7 @@ impl DisplayManager<FrameEmissionSettings> {
 // ############################
 // ### CAPTUREFILESELECTION ###
 // ############################
+#[derive(Debug)]
 struct CaptureFileSelection {}
 impl DisplayManager<CaptureFileSelection> {
     // procedures relatives à l'écran CaptureFileSelection
@@ -178,7 +192,7 @@ impl DisplayScreen for CaptureFileSelection {}
 // ####################
 // ### FRAMECAPTURE ###
 // ####################
-
+#[derive(Debug)]
 struct FrameCapture {
     is_silent: bool,
 }
