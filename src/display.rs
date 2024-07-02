@@ -6,13 +6,13 @@ enum EmissionMode {
     Loopback,
 }
 
-struct DisplayManager<STATE> {
-    pub current_screen: STATE,
+struct DisplayManager<S: DisplayScreen> {
+    pub current_screen: S,
     pub bitrate: Bitrate,
     pub mode: EmissionMode,
 }
 
-impl<STATE> DisplayManager<STATE> {
+impl<S: DisplayScreen> DisplayManager<S> {
     // procedures communes à tous les écrans
     pub fn default() -> DisplayManager<Home> {
         DisplayManager {
@@ -22,6 +22,8 @@ impl<STATE> DisplayManager<STATE> {
         }
     }
 }
+
+trait DisplayScreen {}
 
 // ############
 // ### HOME ###
@@ -34,6 +36,7 @@ enum HomeItems {
 struct Home {
     pub selected_item: HomeItems,
 }
+impl DisplayScreen for Home {}
 
 impl Home {
     pub fn default() -> Self {
@@ -69,6 +72,7 @@ impl DisplayManager<Home> {
 struct EmissionFrameSelection {
     // pub selected_item: EmissionFrameSelectionItems
 }
+impl DisplayScreen for EmissionFrameSelection {}
 
 impl DisplayManager<EmissionFrameSelection> {
     // procedures relatives à l'écran EmissionFrameSelection
@@ -81,6 +85,7 @@ struct FrameEmission {
     pub frame_count: u8,
     pub is_sending_frames: bool,
 }
+impl DisplayScreen for FrameEmission {}
 
 impl FrameEmission {
     pub fn default() -> Self {
@@ -127,6 +132,7 @@ enum FrameEmissionSettingsItems {
 struct FrameEmissionSettings {
     pub selected_item: FrameEmissionSettingsItems,
 }
+impl DisplayScreen for FrameEmissionSettings {}
 
 impl FrameEmissionSettings {
     pub fn default() -> Self {
@@ -190,6 +196,7 @@ struct CaptureFileSelection {}
 impl DisplayManager<CaptureFileSelection> {
     // procedures relatives à l'écran CaptureFileSelection
 }
+impl DisplayScreen for CaptureFileSelection {}
 
 // ####################
 // ### FRAMECAPTURE ###
@@ -198,6 +205,7 @@ impl DisplayManager<CaptureFileSelection> {
 struct FrameCapture {
     is_silent: bool,
 }
+impl DisplayScreen for FrameCapture {}
 
 impl FrameCapture {
     pub fn default() -> Self {
