@@ -94,15 +94,12 @@ mod app {
 
         // Init CAN bus
         rprintln!("-> CAN bus");
-        let mut can = CanContext::new(
+        let can = CanContext::new(
             Can::new(cx.device.CAN1, cx.device.USB),
             gpiob.pb8.into_floating_input(&mut gpiob.crh), // can rx
             gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh), // can tx
             &mut afio.mapr,
         );
-        can.set_bitrate(Bitrate::Br125kbps);
-        can.enable_interrupts();
-        can.enable_non_blocking();
 
         // Init CAN TX & RX queues
         let (can_tx_producer, can_tx_consumer) = cx.local.q_tx.split();

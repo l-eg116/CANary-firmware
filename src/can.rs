@@ -1,6 +1,5 @@
 use bxcan::{filter::Mask32, Fifo, Frame};
 use heapless::spsc::Producer;
-use nb::block;
 use stm32f1xx_hal::{
     afio,
     can::Can,
@@ -9,8 +8,6 @@ use stm32f1xx_hal::{
 };
 
 pub struct CanContext {
-    bitrate: Bitrate,
-    tx_mode: EmissionMode,
     pub bus: bxcan::Can<Can<CAN1>>,
 }
 
@@ -23,68 +20,45 @@ impl CanContext {
     ) -> Self {
         can_instance.assign_pins((tx, rx), mapr);
 
-        let mut can_bus = bxcan::Can::builder(can_instance)
-            .set_bit_timing(Bitrate::default().as_bit_timing())
-            .leave_disabled();
+        let mut can_bus = bxcan::Can::builder(can_instance).leave_disabled();
         can_bus
             .modify_filters()
             .enable_bank(0, Fifo::Fifo0, Mask32::accept_all());
 
-        Self {
-            bitrate: Bitrate::default(),
-            tx_mode: EmissionMode::default(),
-            bus: can_bus,
-        }
+        Self { bus: can_bus }
     }
 
-    pub fn bitrate(&self) -> Bitrate {
-        self.bitrate
-    }
-
-    pub fn set_bitrate(&mut self, bitrate: Bitrate) {
-        self.bitrate = bitrate;
-
+    pub fn enable_tx(&mut self, bitrate: Bitrate, mode: EmissionMode) {
         self.bus
             .modify_config()
-            .set_bit_timing(self.bitrate.as_bit_timing())
-            .leave_disabled();
+            .set_bit_timing(bitrate.as_bit_timing())
+            .set_automatic_retransmit(match mode {
+                EmissionMode::AwaitACK => true,
+                EmissionMode::IgnoreACK | EmissionMode::Loopback => false,
+            })
+            .set_loopback(match mode {
+                EmissionMode::Loopback => true,
+                EmissionMode::AwaitACK | EmissionMode::IgnoreACK => false,
+            })
+            .enable();
+        self.bus
+            .enable_interrupt(bxcan::Interrupt::TransmitMailboxEmpty);
     }
 
-    pub fn tx_mode(&self) -> EmissionMode {
-        self.tx_mode
+    pub fn enable_rx(&mut self, bitrate: Bitrate, silent: bool) {
+        self.bus
+            .modify_config()
+            .set_bit_timing(bitrate.as_bit_timing())
+            .set_silent(silent)
+            .enable();
+        self.bus
+            .enable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
     }
 
-    pub fn set_tx_mode(&mut self, tx_mode: EmissionMode) {
-        let bus_config = self.bus.modify_config();
-        self.tx_mode = tx_mode;
-        match self.tx_mode {
-            EmissionMode::AwaitACK => bus_config // Expects some answer on the bus
-                .set_automatic_retransmit(true)
-                .set_loopback(false),
-            EmissionMode::IgnoreACK => bus_config // Expects no answers on the bus
-                .set_automatic_retransmit(false)
-                .set_loopback(false),
-            EmissionMode::Loopback => bus_config // Expects no bus
-                .set_automatic_retransmit(true)
-                .set_loopback(true),
-        }
-        .leave_disabled();
-    }
-
-    pub fn enable_non_blocking(&mut self) {
-        block!(self.bus.enable_non_blocking()).unwrap();
-    }
-
-    pub fn enable_interrupts(&mut self) {
-        self.bus.enable_interrupts(
-            bxcan::Interrupts::FIFO0_MESSAGE_PENDING | bxcan::Interrupts::TRANSMIT_MAILBOX_EMPTY,
-        );
-    }
-
-    pub fn disable_interrupts(&mut self) {
+    pub fn disable(&mut self) {
         self.bus.disable_interrupts(
             bxcan::Interrupts::FIFO0_MESSAGE_PENDING | bxcan::Interrupts::TRANSMIT_MAILBOX_EMPTY,
-        );
+        )
     }
 }
 
