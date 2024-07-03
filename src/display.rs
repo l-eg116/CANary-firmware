@@ -55,18 +55,18 @@ impl DisplayManager<Home> {
         self.current_screen.selected_item = match self.current_screen.selected_item {
             HomeItems::Emit => HomeItems::Capture,
             HomeItems::Capture => HomeItems::Emit,
-        }
+        };
     }
 
     pub fn left_pressed(&mut self) {
-        self.right_pressed()
+        self.right_pressed();
     }
 
     pub fn ok_pressed(&mut self) {
         match self.current_screen.selected_item {
             HomeItems::Emit => todo!("GOTO EmissionFrameSelection"),
             HomeItems::Capture => todo!("GOTO CaptureFileSelection"),
-        }
+        };
     }
 }
 
@@ -112,11 +112,11 @@ impl DisplayManager<FrameEmission> {
     }
 
     pub fn right_pressed(&mut self) {
-        todo!("GOTO FrameEmissionSettings")
+        todo!("GOTO FrameEmissionSettings");
     }
 
     pub fn left_pressed(&mut self) {
-        todo!("GOTO EmissionFrameSelection OR Home ?")
+        todo!("GOTO EmissionFrameSelection OR Home ?");
     }
 
     pub fn ok_pressed(&mut self) {
@@ -148,32 +148,28 @@ impl FrameEmissionSettings {
 
 impl DisplayManager<FrameEmissionSettings> {
     pub fn up_or_down_pressed(&mut self) {
-        match self.current_screen.selected_item {
-            FrameEmissionSettingsItems::Bitrate => {
-                self.current_screen.selected_item = FrameEmissionSettingsItems::Mode
-            }
-            FrameEmissionSettingsItems::Mode => {
-                self.current_screen.selected_item = FrameEmissionSettingsItems::Bitrate
-            }
-        }
+        self.current_screen.selected_item = match self.current_screen.selected_item {
+            FrameEmissionSettingsItems::Bitrate => FrameEmissionSettingsItems::Mode,
+            FrameEmissionSettingsItems::Mode => FrameEmissionSettingsItems::Bitrate,
+        };
     }
 
     pub fn right_pressed(&mut self) {
         match self.current_screen.selected_item {
             FrameEmissionSettingsItems::Bitrate => self.bitrate.increment(),
             FrameEmissionSettingsItems::Mode => self.mode.to_next(),
-        }
+        };
     }
 
     pub fn left_pressed(&mut self) {
         match self.current_screen.selected_item {
             FrameEmissionSettingsItems::Bitrate => self.bitrate.decrement(),
             FrameEmissionSettingsItems::Mode => self.mode.to_next(),
-        }
+        };
     }
 
     pub fn ok_pressed(&mut self) {
-        todo!("GOTO FrameEmission")
+        todo!("GOTO FrameEmission");
     }
 }
 
@@ -205,18 +201,18 @@ impl FrameCapture {
 impl DisplayManager<FrameCapture> {
     // procedures relatives à l'écran FrameCapture
     pub fn up_pressed(&mut self) {
-        self.bitrate.increment()
+        self.bitrate.increment();
     }
 
     pub fn down_pressed(&mut self) {
-        self.bitrate.decrement()
+        self.bitrate.decrement();
     }
 
     pub fn right_pressed(&mut self) {
-        self.current_screen.is_silent = !self.current_screen.is_silent
+        self.current_screen.is_silent = !self.current_screen.is_silent;
     }
 
     pub fn left_pressed(&mut self) {
-        todo!("GOTO CaptureFileSelection OR Home")
+        todo!("GOTO CaptureFileSelection OR Home");
     }
 }
