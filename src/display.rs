@@ -104,13 +104,11 @@ impl FrameEmission {
 
 impl DisplayManager<FrameEmission> {
     pub fn up_pressed(&mut self) {
-        self.current_screen.frame_count += 1;
+        self.current_screen.frame_count = self.current_screen.frame_count.saturating_add(1);
     }
 
     pub fn down_pressed(&mut self) {
-        if self.current_screen.frame_count != 0 {
-            self.current_screen.frame_count -= 1;
-        }
+        self.current_screen.frame_count = self.current_screen.frame_count.saturating_sub(1);
     }
 
     pub fn right_pressed(&mut self) {
