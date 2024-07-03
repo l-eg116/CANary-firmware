@@ -186,14 +186,12 @@ enum FrameEmissionSettingsItems {
 impl FrameEmissionSettingsItems {
     pub fn increment(&mut self) {
         *self = match self {
-            Self::Bitrate => Self::Mode,
-            Self::Mode => Self::Mode,
+            Self::Bitrate | Self::Mode => Self::Mode,
         }
     }
     pub fn decrement(&mut self) {
         *self = match self {
-            Self::Mode => Self::Bitrate,
-            Self::Bitrate => Self::Bitrate,
+            Self::Mode | Self::Bitrate => Self::Bitrate,
         }
     }
 }
