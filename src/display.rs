@@ -151,6 +151,7 @@ impl DisplayScreen {
     }
 }
 
+#[derive(Debug)]
 struct DisplayState {
     pub bitrate: Bitrate,
     pub emission_mode: EmissionMode,
