@@ -11,7 +11,7 @@ use crate::{
 #[derive(Debug)]
 pub struct DisplayManager {
     current_screen: DisplayScreen,
-    state: DisplayState,
+    pub state: DisplayState,
 }
 
 impl DisplayManager {
@@ -31,10 +31,14 @@ impl DisplayManager {
         self.current_screen.press(button, &mut self.state);
         self.render();
     }
+
+    pub fn current_screen(&self) -> &DisplayScreen {
+        &self.current_screen
+    }
 }
 
 #[derive(Debug)]
-enum DisplayScreen {
+pub enum DisplayScreen {
     Home {
         selected_item: HomeItem,
     },
@@ -157,7 +161,7 @@ impl DisplayScreen {
 }
 
 #[derive(Debug)]
-struct DisplayState {
+pub struct DisplayState {
     pub bitrate: Bitrate,
     pub emission_mode: EmissionMode,
     pub emission_count: u8,
@@ -178,13 +182,13 @@ impl DisplayState {
 }
 
 #[derive(Debug)]
-enum HomeItem {
+pub enum HomeItem {
     Emit,
     Capture,
 }
 
 #[derive(Debug)]
-enum FrameEmissionSettingsItems {
+pub enum FrameEmissionSettingsItems {
     Bitrate,
     Mode,
 }
