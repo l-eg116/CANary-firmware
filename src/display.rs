@@ -4,7 +4,7 @@ use rtt_target::rprintln;
 
 use self::DisplayScreenVariant as DSV;
 use crate::{
-    buttons::ControllerButton,
+    buttons::Button,
     can::{Bitrate, EmissionMode},
 };
 
@@ -27,7 +27,7 @@ impl DisplayManager {
         rprintln!("{:?}", self);
     }
 
-    pub fn press(&mut self, button: ControllerButton) {
+    pub fn press(&mut self, button: Button) {
         self.current_screen.press(button, &mut self.state);
     }
 }
@@ -75,77 +75,77 @@ impl DisplayScreen {
         }
     }
 
-    pub fn press(&mut self, button: ControllerButton, state: &mut DisplayState) {
+    pub fn press(&mut self, button: Button, state: &mut DisplayState) {
         match self {
             Self::Home { selected_item } => match button {
-                ControllerButton::Ok => {
+                Button::Ok => {
                     *self = Self::default_variant(match selected_item {
                         HomeItem::Capture => DSV::CaptureFrameSelection,
                         HomeItem::Emit => DSV::EmissionFrameSelection,
                     })
                 }
-                ControllerButton::Right => *selected_item = HomeItem::Capture,
-                ControllerButton::Left => *selected_item = HomeItem::Emit,
+                Button::Right => *selected_item = HomeItem::Capture,
+                Button::Left => *selected_item = HomeItem::Emit,
                 _ => {}
             },
             Self::EmissionFrameSelection {} => match button {
-                ControllerButton::Ok => *self = Self::default_variant(DSV::FrameEmission),
-                ControllerButton::Up => todo!(),
-                ControllerButton::Down => todo!(),
-                ControllerButton::Right => todo!(),
-                ControllerButton::Left => {
+                Button::Ok => *self = Self::default_variant(DSV::FrameEmission),
+                Button::Up => todo!(),
+                Button::Down => todo!(),
+                Button::Right => todo!(),
+                Button::Left => {
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
                     }
                 }
             },
             Self::FrameEmission => match button {
-                ControllerButton::Ok => state.running = !state.running,
-                ControllerButton::Up => {
+                Button::Ok => state.running = !state.running,
+                Button::Up => {
                     state.emission_count = state.emission_count.saturating_add(1)
                 }
-                ControllerButton::Down => {
+                Button::Down => {
                     state.emission_count = state.emission_count.saturating_sub(1)
                 }
-                ControllerButton::Right => {
+                Button::Right => {
                     *self = Self::default_variant(DSV::FrameEmissionSettings)
                 }
-                ControllerButton::Left => {
+                Button::Left => {
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
                     }
                 }
             },
             Self::FrameEmissionSettings { selected_item } => match button {
-                ControllerButton::Ok => *self = Self::default_variant(DSV::FrameEmission),
-                ControllerButton::Up => selected_item.decrement(),
-                ControllerButton::Down => selected_item.increment(),
-                ControllerButton::Right => match selected_item {
+                Button::Ok => *self = Self::default_variant(DSV::FrameEmission),
+                Button::Up => selected_item.decrement(),
+                Button::Down => selected_item.increment(),
+                Button::Right => match selected_item {
                     FrameEmissionSettingsItems::Bitrate => state.bitrate.increment(),
                     FrameEmissionSettingsItems::Mode => state.emission_mode.increment(),
                 },
-                ControllerButton::Left => match selected_item {
+                Button::Left => match selected_item {
                     FrameEmissionSettingsItems::Bitrate => state.bitrate.decrement(),
                     FrameEmissionSettingsItems::Mode => state.emission_mode.decrement(),
                 },
             },
             Self::CaptureFrameSelection {} => match button {
-                ControllerButton::Ok => *self = Self::default_variant(DSV::FrameCapture),
-                ControllerButton::Up => todo!(),
-                ControllerButton::Down => todo!(),
-                ControllerButton::Right => todo!(),
-                ControllerButton::Left => {
+                Button::Ok => *self = Self::default_variant(DSV::FrameCapture),
+                Button::Up => todo!(),
+                Button::Down => todo!(),
+                Button::Right => todo!(),
+                Button::Left => {
                     *self = Self::Home {
                         selected_item: HomeItem::Capture,
                     }
                 }
             },
             Self::FrameCapture => match button {
-                ControllerButton::Ok => state.running = !state.running,
-                ControllerButton::Up => state.bitrate.increment(),
-                ControllerButton::Down => state.bitrate.decrement(),
-                ControllerButton::Right => state.capture_silent = !state.capture_silent,
-                ControllerButton::Left => {
+                Button::Ok => state.running = !state.running,
+                Button::Up => state.bitrate.increment(),
+                Button::Down => state.bitrate.decrement(),
+                Button::Right => state.capture_silent = !state.capture_silent,
+                Button::Left => {
                     *self = Self::Home {
                         selected_item: HomeItem::Capture,
                     }

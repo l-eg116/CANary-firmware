@@ -48,7 +48,7 @@ mod app {
     struct Shared {
         can: CanContext,
         #[lock_free]
-        controller: Controller,
+        button_panel: ButtonPanel,
         status: CanaryStatus,
         volume_manager: VolumeManager,
         stop_listening: bool, // TODO : make parameter
@@ -112,14 +112,14 @@ mod app {
         // Init buttons
         rprintln!("-> Buttons");
         let (_pa15, _pb3, pb4) = afio.mapr.disable_jtag(gpioa.pa15, gpiob.pb3, gpiob.pb4);
-        let mut controller = Controller {
+        let mut button_panel = ButtonPanel {
             button_ok: pb4.into_pull_up_input(&mut gpiob.crl),
             button_up: gpioa.pa0.into_pull_up_input(&mut gpioa.crl),
             button_down: gpioa.pa1.into_pull_up_input(&mut gpioa.crl),
             button_right: gpioa.pa2.into_pull_up_input(&mut gpioa.crl),
             button_left: gpioa.pa3.into_pull_up_input(&mut gpioa.crl),
         };
-        controller.enable_interrupts(&mut afio, &mut cx.device.EXTI);
+        button_panel.enable_interrupts(&mut afio, &mut cx.device.EXTI);
 
         // Init status LED
         rprintln!("-> LED");
@@ -164,7 +164,7 @@ mod app {
         (
             Shared {
                 can,
-                controller,
+                button_panel,
                 status,
                 volume_manager,
                 stop_listening: false,
@@ -269,48 +269,50 @@ mod app {
     #[task(
         binds = EXTI4,
         priority = 8,
-        shared = [controller, display_manager],
+        shared = [button_panel, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_ok(mut cx: clicked_ok::Context) {
-        cx.shared.controller.button_ok.clear_interrupt_pending_bit();
+        cx.shared
+            .button_panel
+            .button_ok
+            .clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
             return;
         };
 
         rprintln!("Pressed OK");
-        cx.shared
-            .display_manager
-            .lock(|dm| dm.press(ControllerButton::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
     }
 
     #[task(
         binds = EXTI0,
         priority = 8,
-        shared = [controller, display_manager],
+        shared = [button_panel, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_up(mut cx: clicked_up::Context) {
-        cx.shared.controller.button_up.clear_interrupt_pending_bit();
+        cx.shared
+            .button_panel
+            .button_up
+            .clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
             return;
         };
 
         rprintln!("Pressed UP");
-        cx.shared
-            .display_manager
-            .lock(|dm| dm.press(ControllerButton::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
     }
 
     #[task(
         binds = EXTI1,
         priority = 8,
-        shared = [controller, display_manager],
+        shared = [button_panel, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_down(mut cx: clicked_down::Context) {
         cx.shared
-            .controller
+            .button_panel
             .button_down
             .clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
@@ -318,20 +320,18 @@ mod app {
         };
 
         rprintln!("Pressed DOWN");
-        cx.shared
-            .display_manager
-            .lock(|dm| dm.press(ControllerButton::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
     }
 
     #[task(
         binds = EXTI2,
         priority = 8,
-        shared = [controller, display_manager],
+        shared = [button_panel, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_right(mut cx: clicked_right::Context) {
         cx.shared
-            .controller
+            .button_panel
             .button_right
             .clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
@@ -339,20 +339,18 @@ mod app {
         };
 
         rprintln!("Pressed RIGHT");
-        cx.shared
-            .display_manager
-            .lock(|dm| dm.press(ControllerButton::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
     }
 
     #[task(
         binds = EXTI3,
         priority = 8,
-        shared = [controller, display_manager],
+        shared = [button_panel, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_left(mut cx: clicked_left::Context) {
         cx.shared
-            .controller
+            .button_panel
             .button_left
             .clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
@@ -360,9 +358,7 @@ mod app {
         };
 
         rprintln!("Pressed LEFT");
-        cx.shared
-            .display_manager
-            .lock(|dm| dm.press(ControllerButton::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
     }
 
     #[task(

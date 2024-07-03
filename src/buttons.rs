@@ -15,7 +15,7 @@ type DownButton = Pin<'A', 1, Input<PullUp>>;
 type RightButton = Pin<'A', 2, Input<PullUp>>;
 type LeftButton = Pin<'A', 3, Input<PullUp>>;
 
-pub struct Controller {
+pub struct ButtonPanel {
     pub button_ok: OkButton,
     pub button_up: UpButton,
     pub button_down: DownButton,
@@ -23,7 +23,7 @@ pub struct Controller {
     pub button_left: LeftButton,
 }
 
-impl Controller {
+impl ButtonPanel {
     pub fn enable_interrupts(&mut self, afio: &mut afio::Parts, exti: &mut EXTI) {
         self.button_ok.make_interrupt_source(afio);
         self.button_up.make_interrupt_source(afio);
@@ -52,8 +52,8 @@ impl Controller {
         self.button_left.clear_interrupt_pending_bit();
     }
 
-    pub fn get_interupt_states(&self) -> ControllerState {
-        ControllerState {
+    pub fn get_interupt_states(&self) -> ButtonPanelState {
+        ButtonPanelState {
             ok_pressed: self.button_ok.check_interrupt(),
             up_pressed: self.button_up.check_interrupt(),
             down_pressed: self.button_down.check_interrupt(),
@@ -62,8 +62,8 @@ impl Controller {
         }
     }
 
-    pub fn get_states(&self) -> ControllerState {
-        ControllerState {
+    pub fn get_states(&self) -> ButtonPanelState {
+        ButtonPanelState {
             ok_pressed: self.button_ok.is_low(),
             up_pressed: self.button_up.is_low(),
             down_pressed: self.button_down.is_low(),
@@ -74,7 +74,7 @@ impl Controller {
 }
 
 #[derive(Debug)]
-pub enum ControllerButton {
+pub enum Button {
     Ok,
     Up,
     Down,
@@ -83,7 +83,7 @@ pub enum ControllerButton {
 }
 
 #[derive(Debug)]
-pub struct ControllerState {
+pub struct ButtonPanelState {
     pub ok_pressed: bool,
     pub up_pressed: bool,
     pub down_pressed: bool,
@@ -91,7 +91,7 @@ pub struct ControllerState {
     pub left_pressed: bool,
 }
 
-impl ControllerState {
+impl ButtonPanelState {
     pub fn default() -> Self {
         Self {
             ok_pressed: false,
