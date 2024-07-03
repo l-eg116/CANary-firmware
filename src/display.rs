@@ -100,16 +100,21 @@ impl DisplayScreen {
                     }
                 }
             },
-            Self::FrameEmission => match button {
-                Button::Ok => state.running = !state.running,
-                Button::Up => state.emission_count = state.emission_count.saturating_add(1),
-                Button::Down => state.emission_count = state.emission_count.saturating_sub(1),
-                Button::Right => *self = Self::default_variant(DSV::FrameEmissionSettings),
-                Button::Left => {
+            Self::FrameEmission => match (button, state.running) {
+                (Button::Ok, _) => state.running = !state.running,
+                (Button::Up, false) => {
+                    state.emission_count = state.emission_count.saturating_add(1)
+                }
+                (Button::Down, false) => {
+                    state.emission_count = state.emission_count.saturating_sub(1)
+                }
+                (Button::Right, false) => *self = Self::default_variant(DSV::FrameEmissionSettings),
+                (Button::Left, false) => {
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
                     }
                 }
+                _ => {}
             },
             Self::FrameEmissionSettings { selected_item } => match button {
                 Button::Ok => *self = Self::default_variant(DSV::FrameEmission),
@@ -135,16 +140,17 @@ impl DisplayScreen {
                     }
                 }
             },
-            Self::FrameCapture => match button {
-                Button::Ok => state.running = !state.running,
-                Button::Up => state.bitrate.increment(),
-                Button::Down => state.bitrate.decrement(),
-                Button::Right => state.capture_silent = !state.capture_silent,
-                Button::Left => {
+            Self::FrameCapture => match (button, state.running) {
+                (Button::Ok, _) => state.running = !state.running,
+                (Button::Up, false) => state.bitrate.increment(),
+                (Button::Down, false) => state.bitrate.decrement(),
+                (Button::Right, false) => state.capture_silent = !state.capture_silent,
+                (Button::Left, false) => {
                     *self = Self::Home {
                         selected_item: HomeItem::Capture,
                     }
                 }
+                _ => {}
             },
         }
     }
