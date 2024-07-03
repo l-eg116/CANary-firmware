@@ -29,6 +29,7 @@ impl DisplayManager {
 
     pub fn press(&mut self, button: Button) {
         self.current_screen.press(button, &mut self.state);
+        self.render();
     }
 }
 
@@ -101,15 +102,9 @@ impl DisplayScreen {
             },
             Self::FrameEmission => match button {
                 Button::Ok => state.running = !state.running,
-                Button::Up => {
-                    state.emission_count = state.emission_count.saturating_add(1)
-                }
-                Button::Down => {
-                    state.emission_count = state.emission_count.saturating_sub(1)
-                }
-                Button::Right => {
-                    *self = Self::default_variant(DSV::FrameEmissionSettings)
-                }
+                Button::Up => state.emission_count = state.emission_count.saturating_add(1),
+                Button::Down => state.emission_count = state.emission_count.saturating_sub(1),
+                Button::Right => *self = Self::default_variant(DSV::FrameEmissionSettings),
                 Button::Left => {
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
