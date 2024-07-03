@@ -8,9 +8,10 @@ use crate::{
     can::{Bitrate, EmissionMode},
 };
 
+#[derive(Debug)]
 pub struct DisplayManager {
     current_screen: DisplayScreen,
-    settings: DisplayState,
+    state: DisplayState,
 }
 
 impl DisplayManager {
@@ -18,8 +19,12 @@ impl DisplayManager {
     pub fn default() -> DisplayManager {
         DisplayManager {
             current_screen: DisplayScreen::default(),
-            settings: DisplayState::default(),
+            state: DisplayState::default(),
         }
+    }
+
+    pub fn render(&self) {
+        rprintln!("{:?}", self);
     }
 }
 
@@ -44,14 +49,6 @@ enum DisplayScreenVariant {
     FrameEmissionSettings,
     CaptureFrameSelection,
     FrameCapture,
-}
-
-struct DisplayState {
-    pub bitrate: Bitrate,
-    pub emission_mode: EmissionMode,
-    pub emission_count: u8,
-    pub capture_silent: bool,
-    pub running: bool,
 }
 
 impl DisplayScreen {
@@ -152,6 +149,14 @@ impl DisplayScreen {
             },
         }
     }
+}
+
+struct DisplayState {
+    pub bitrate: Bitrate,
+    pub emission_mode: EmissionMode,
+    pub emission_count: u8,
+    pub capture_silent: bool,
+    pub running: bool,
 }
 
 impl DisplayState {
