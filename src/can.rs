@@ -191,7 +191,7 @@ impl EmissionMode {
         Self::AwaitACK
     }
 
-    pub fn to_next(&mut self) {
+    pub fn increment(&mut self) {
         match self {
             Self::AwaitACK => *self = Self::IgnoreACK,
             Self::IgnoreACK => *self = Self::Loopback,
@@ -199,7 +199,7 @@ impl EmissionMode {
         }
     }
 
-    pub fn to_prev(&mut self) {
+    pub fn decrement(&mut self) {
         match self {
             Self::IgnoreACK => *self = Self::AwaitACK,
             Self::Loopback => *self = Self::IgnoreACK,
