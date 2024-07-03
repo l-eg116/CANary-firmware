@@ -363,7 +363,8 @@ mod app {
     )]
     async fn sd_reader(mut cx: sd_reader::Context, file_name: &str) {
         let tx_queue = cx.local.can_tx_producer;
-        let mut is_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
+        let emission_count = cx.shared.display_manager.lock(|dm| dm.state.emission_count);
+        let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
@@ -372,11 +373,12 @@ mod app {
                 root_dir
                     .open_file_in_dir(file_name, sdmmc::Mode::ReadOnly)
                     .unwrap(),
+                emission_count,
             );
 
             for frame in logs {
-                while !tx_queue.ready() && is_running() {}
-                if !is_running() {
+                while !tx_queue.ready() && get_running() {}
+                if !get_running() {
                     break;
                 }
                 enqueue_frame(tx_queue, frame).expect("tx_queue is ready");
@@ -391,7 +393,7 @@ mod app {
     )]
     async fn sd_writer(mut cx: sd_writer::Context) {
         let rx_queue = cx.local.can_rx_consumer;
-        let mut is_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
+        let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
 
         // while let Some(_) = rx_queue.dequeue() {} // Queue already empty
 
@@ -409,7 +411,7 @@ mod app {
 
             rprintln!("Writing started to '{}'", file_name);
 
-            while is_running() {
+            while get_running() {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
