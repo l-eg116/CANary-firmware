@@ -301,7 +301,7 @@ mod app {
         };
 
         rprintln!("Pressed UP");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Up));
     }
 
     #[task(
@@ -320,7 +320,7 @@ mod app {
         };
 
         rprintln!("Pressed DOWN");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Down));
     }
 
     #[task(
@@ -339,7 +339,7 @@ mod app {
         };
 
         rprintln!("Pressed RIGHT");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Right));
     }
 
     #[task(
@@ -358,7 +358,7 @@ mod app {
         };
 
         rprintln!("Pressed LEFT");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
+        cx.shared.display_manager.lock(|dm| dm.press(Button::Left));
     }
 
     #[task(

@@ -24,7 +24,7 @@ impl DisplayManager {
     }
 
     pub fn render(&self) {
-        rprintln!("{:?}", self);
+        rprintln!("{:#?}", self);
     }
 
     pub fn press(&mut self, button: Button) {
