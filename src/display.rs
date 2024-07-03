@@ -38,7 +38,6 @@ impl DisplayScreen for Home {}
 
 #[derive(Debug)]
 enum HomeItems {
-    None,
     Emit,
     Capture,
 } //noms non contractuels
@@ -46,26 +45,27 @@ enum HomeItems {
 impl Home {
     pub fn default() -> Self {
         Self {
-            selected_item: HomeItems::None,
+            selected_item: HomeItems::Emit,
         }
     }
 }
 
 impl DisplayManager<Home> {
-    pub fn right_or_left_pressed(&mut self) {
-        match self.current_screen.selected_item {
-            // first state is None, then alternate between Capture and Emit
-            HomeItems::None => self.current_screen.selected_item = HomeItems::Capture,
-            HomeItems::Emit => self.current_screen.selected_item = HomeItems::Capture,
-            HomeItems::Capture => self.current_screen.selected_item = HomeItems::Emit,
+    pub fn right_pressed(&mut self) {
+        self.current_screen.selected_item = match self.current_screen.selected_item {
+            HomeItems::Emit => HomeItems::Capture,
+            HomeItems::Capture => HomeItems::Emit,
         }
+    }
+
+    pub fn left_pressed(&mut self) {
+        self.right_pressed()
     }
 
     pub fn ok_pressed(&mut self) {
         match self.current_screen.selected_item {
             HomeItems::Emit => todo!("GOTO EmissionFrameSelection"),
             HomeItems::Capture => todo!("GOTO CaptureFileSelection"),
-            _ => (),
         }
     }
 }
