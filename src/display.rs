@@ -26,6 +26,10 @@ impl DisplayManager {
     pub fn render(&self) {
         rprintln!("{:?}", self);
     }
+
+    pub fn press(&mut self, button: ControllerButton) {
+        self.current_screen.press(button, &mut self.state);
+    }
 }
 
 #[derive(Debug)]

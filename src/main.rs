@@ -34,7 +34,7 @@ mod app {
         spi::{Mode, Phase, Polarity, Spi},
     };
 
-    use crate::{buttons::*, can::*, sd::*, spi::*, status::*};
+    use crate::{buttons::*, can::*, display::*, sd::*, spi::*, status::*};
 
     pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
@@ -52,6 +52,7 @@ mod app {
         status: CanaryStatus,
         volume_manager: VolumeManager,
         stop_listening: bool, // TODO : make parameter
+        display_manager: DisplayManager,
     }
 
     #[local]
@@ -157,6 +158,9 @@ mod app {
             sdmmc::VolumeManager::<_, _, 2, 2, 1>::new_with_limits(sd_card, FakeTimeSource {}, 5000)
         };
 
+        // Init DisplayManager
+        let display_manager = DisplayManager::default();
+
         (
             Shared {
                 can,
@@ -164,6 +168,7 @@ mod app {
                 status,
                 volume_manager,
                 stop_listening: false,
+                display_manager,
             },
             Local {
                 can_tx_producer,
@@ -264,42 +269,43 @@ mod app {
     #[task(
         binds = EXTI4,
         priority = 8,
-        shared = [controller],
+        shared = [controller, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
-    fn clicked_ok(cx: clicked_ok::Context) {
+    fn clicked_ok(mut cx: clicked_ok::Context) {
         cx.shared.controller.button_ok.clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
             return;
         };
 
         rprintln!("Pressed OK");
-        sd_reader::spawn("boot.log").unwrap();
+        cx.shared
+            .display_manager
+            .lock(|dm| dm.press(ControllerButton::Ok));
     }
 
     #[task(
         binds = EXTI0,
         priority = 8,
-        shared = [controller],
+        shared = [controller, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
-    fn clicked_up(cx: clicked_up::Context) {
+    fn clicked_up(mut cx: clicked_up::Context) {
         cx.shared.controller.button_up.clear_interrupt_pending_bit();
         if debounce_input(cx.local.last_press_time) {
             return;
         };
 
         rprintln!("Pressed UP");
-        match sd_writer::spawn() {
-            Ok(_) => (),
-            Err(_) => rprintln!("Already spawned"),
-        };
+        cx.shared
+            .display_manager
+            .lock(|dm| dm.press(ControllerButton::Ok));
     }
 
     #[task(
         binds = EXTI1,
         priority = 8,
-        shared = [controller, stop_listening],
+        shared = [controller, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_down(mut cx: clicked_down::Context) {
@@ -312,16 +318,18 @@ mod app {
         };
 
         rprintln!("Pressed DOWN");
-        cx.shared.stop_listening.lock(|f| *f = true);
+        cx.shared
+            .display_manager
+            .lock(|dm| dm.press(ControllerButton::Ok));
     }
 
     #[task(
         binds = EXTI2,
         priority = 8,
-        shared = [controller],
+        shared = [controller, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
-    fn clicked_right(cx: clicked_right::Context) {
+    fn clicked_right(mut cx: clicked_right::Context) {
         cx.shared
             .controller
             .button_right
@@ -331,15 +339,18 @@ mod app {
         };
 
         rprintln!("Pressed RIGHT");
+        cx.shared
+            .display_manager
+            .lock(|dm| dm.press(ControllerButton::Ok));
     }
 
     #[task(
         binds = EXTI3,
+        priority = 8,
+        shared = [controller, display_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
-        shared = [controller],
-        priority = 8
     )]
-    fn clicked_left(cx: clicked_left::Context) {
+    fn clicked_left(mut cx: clicked_left::Context) {
         cx.shared
             .controller
             .button_left
@@ -349,6 +360,9 @@ mod app {
         };
 
         rprintln!("Pressed LEFT");
+        cx.shared
+            .display_manager
+            .lock(|dm| dm.press(ControllerButton::Ok));
     }
 
     #[task(
