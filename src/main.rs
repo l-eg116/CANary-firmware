@@ -411,23 +411,35 @@ mod app {
     )]
     async fn sd_reader(mut cx: sd_reader::Context, file_name: &str) {
         let tx_queue = cx.local.can_tx_producer;
+        let mut emission_count = match cx.shared.display_manager.lock(|dm| dm.state.emission_count)
+        {
+            0 => None,
+            n => Some(n),
+        };
         let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut root_dir = sd_volume.open_root_dir().unwrap();
-            let logs = CanLogsInterator::new(
-                root_dir
-                    .open_file_in_dir(file_name, sdmmc::Mode::ReadOnly)
-                    .unwrap(),
-            );
 
-            for frame in logs {
-                while !tx_queue.ready() && get_running() {}
-                if !get_running() {
-                    break;
+            while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
+                let logs = CanLogsInterator::new(
+                    root_dir
+                        .open_file_in_dir(file_name, sdmmc::Mode::ReadOnly)
+                        .unwrap(),
+                );
+
+                for frame in logs {
+                    while !tx_queue.ready() && get_running() {}
+                    if !get_running() {
+                        break;
+                    }
+                    enqueue_frame(tx_queue, frame).expect("tx_queue is ready");
                 }
-                enqueue_frame(tx_queue, frame).expect("tx_queue is ready");
+
+                if let Some(ref mut n) = emission_count {
+                    *n -= 1;
+                }
             }
         });
 
