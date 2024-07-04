@@ -72,17 +72,18 @@ pub fn enqueue_frame<const N: usize>(
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(u32)]
 pub enum Bitrate {
-    Br1000kbps,
-    Br800kbps,
-    Br500kbps,
-    Br250kbps,
-    Br125kbps,
-    Br100kbps,
-    Br83kbps,
-    Br50kbps,
-    Br20kbps,
-    Br10kbps,
+    Br1000kbps = 1_000_000,
+    Br800kbps = 800_000,
+    Br500kbps = 500_000,
+    Br250kbps = 250_000,
+    Br125kbps = 125_000,
+    Br100kbps = 100_000,
+    Br83kbps = 83_333,
+    Br50kbps = 50_000,
+    Br20kbps = 20_000,
+    Br10kbps = 10_000,
 }
 
 impl Bitrate {
@@ -104,21 +105,6 @@ impl Bitrate {
             Self::Br50kbps => 0x001c0013,
             Self::Br20kbps => 0x001c0031,
             Self::Br10kbps => 0x001c0063,
-        }
-    }
-
-    fn as_u32(&self) -> u32 {
-        match self {
-            Self::Br1000kbps => 1_000_000,
-            Self::Br800kbps => 800_000,
-            Self::Br500kbps => 500_000,
-            Self::Br250kbps => 250_000,
-            Self::Br125kbps => 125_000,
-            Self::Br100kbps => 100_000,
-            Self::Br83kbps => 83_333,
-            Self::Br50kbps => 50_000,
-            Self::Br20kbps => 20_000,
-            Self::Br10kbps => 10_000,
         }
     }
 
