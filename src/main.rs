@@ -411,7 +411,6 @@ mod app {
     )]
     async fn sd_reader(mut cx: sd_reader::Context, file_name: &str) {
         let tx_queue = cx.local.can_tx_producer;
-        let emission_count = cx.shared.display_manager.lock(|dm| dm.state.emission_count);
         let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
 
         cx.shared.volume_manager.lock(|vm| {
@@ -421,7 +420,6 @@ mod app {
                 root_dir
                     .open_file_in_dir(file_name, sdmmc::Mode::ReadOnly)
                     .unwrap(),
-                emission_count,
             );
 
             for frame in logs {
