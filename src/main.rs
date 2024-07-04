@@ -278,6 +278,7 @@ mod app {
 
         rprintln!("Pressed OK");
         cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
+        let _ = state_updater::spawn();
     }
 
     #[task(
@@ -297,6 +298,7 @@ mod app {
 
         rprintln!("Pressed UP");
         cx.shared.display_manager.lock(|dm| dm.press(Button::Up));
+        let _ = state_updater::spawn();
     }
 
     #[task(
@@ -316,6 +318,7 @@ mod app {
 
         rprintln!("Pressed DOWN");
         cx.shared.display_manager.lock(|dm| dm.press(Button::Down));
+        let _ = state_updater::spawn();
     }
 
     #[task(
@@ -335,6 +338,7 @@ mod app {
 
         rprintln!("Pressed RIGHT");
         cx.shared.display_manager.lock(|dm| dm.press(Button::Right));
+        let _ = state_updater::spawn();
     }
 
     #[task(
@@ -354,6 +358,50 @@ mod app {
 
         rprintln!("Pressed LEFT");
         cx.shared.display_manager.lock(|dm| dm.press(Button::Left));
+        let _ = state_updater::spawn();
+    }
+
+    #[task(
+        priority = 7,
+        shared = [display_manager, can],
+    )]
+    async fn state_updater(cx: state_updater::Context) {
+        (cx.shared.display_manager, cx.shared.can).lock(|dm, can| {
+            match (dm.current_screen(), &dm.state) {
+                (
+                    DisplayScreen::FrameEmission,
+                    DisplayState {
+                        running: true,
+                        bitrate,
+                        emission_mode,
+                        ..
+                    },
+                ) => {
+                    can.enable_tx(*bitrate, *emission_mode);
+                    sd_reader::spawn("boot.log").expect("sd_reader isn't running");
+                    // TODO : make sd_readers parameter consistent
+                }
+                (
+                    DisplayScreen::FrameCapture,
+                    DisplayState {
+                        running: true,
+                        bitrate,
+                        capture_silent,
+                        ..
+                    },
+                ) => {
+                    can.enable_rx(*bitrate, *capture_silent);
+                    sd_writer::spawn().expect("sd_writer isn't running");
+                }
+                (
+                    DisplayScreen::FrameEmission | DisplayScreen::FrameCapture,
+                    DisplayState { running: false, .. },
+                ) => {
+                    can.disable();
+                }
+                _ => {}
+            }
+        });
     }
 
     #[task(
@@ -384,6 +432,11 @@ mod app {
                 enqueue_frame(tx_queue, frame).expect("tx_queue is ready");
             }
         });
+
+        cx.shared
+            .display_manager
+            .lock(|dm| dm.state.running = false);
+        state_updater::spawn().expect("could not update state");
     }
 
     #[task(
