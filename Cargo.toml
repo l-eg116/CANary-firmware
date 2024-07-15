@@ -8,7 +8,7 @@ bxcan = "0.7.0"
 cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.3"
 embedded-hal = "1.0.0"
-embedded-sdmmc = "0.7.0"
+embedded-sdmmc = "0.8.0"
 heapless = "0.8.0"
 nb = "1.1.0"
 panic-halt = "0.2.0"

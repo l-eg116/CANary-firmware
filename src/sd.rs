@@ -22,7 +22,6 @@ pub type SdCard = sdmmc::SdCard<
         Pin<'B', 14>,
         Pin<'B', 15, Alternate>,
     )>,
-    OutputPinWrapper<'B', 12>,
     Mono,
 >;
 pub type VolumeManager = sdmmc::VolumeManager<SdCard, FakeTimeSource, 2, 2>;
