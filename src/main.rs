@@ -41,6 +41,7 @@ mod app {
     pub const CLOCK_RATE_MHZ: u32 = 64;
     pub const TICK_RATE: u32 = 1_000;
     pub const DEBOUNCE_DELAY_MS: u32 = 10;
+    pub const SD_SPI_CLK_MHZ: u32 = 25;
 
     systick_monotonic!(Mono, TICK_RATE);
 
@@ -138,7 +139,7 @@ mod app {
                         phase: Phase::CaptureOnSecondTransition,
                         polarity: Polarity::IdleHigh,
                     },
-                    2.MHz(),
+                    SD_SPI_CLK_MHZ.MHz(),
                     clocks,
                 ),
             };
