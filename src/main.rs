@@ -17,13 +17,6 @@ mod app {
     use core::fmt::Write;
 
     use bxcan::Frame;
-    use embedded_graphics::{
-        mono_font::{ascii::FONT_6X10, MonoTextStyle},
-        pixelcolor::BinaryColor,
-        prelude::*,
-        primitives::{PrimitiveStyleBuilder, StrokeAlignment},
-        text::{Alignment, Text},
-    };
     use embedded_sdmmc as sdmmc;
     use fugit::Instant;
     use heapless::{
