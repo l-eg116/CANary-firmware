@@ -17,6 +17,13 @@ mod app {
     use core::fmt::Write;
 
     use bxcan::Frame;
+    use embedded_graphics::{
+        mono_font::{ascii::FONT_6X10, MonoTextStyle},
+        pixelcolor::BinaryColor,
+        prelude::*,
+        primitives::{PrimitiveStyleBuilder, StrokeAlignment},
+        text::{Alignment, Text},
+    };
     use embedded_sdmmc as sdmmc;
     use fugit::Instant;
     use heapless::{
@@ -25,10 +32,12 @@ mod app {
     };
     use rtic_monotonics::systick::prelude::*;
     use rtt_target::{rprintln, rtt_init_print};
+    use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
     use stm32f1xx_hal::{
         can::Can,
         flash::FlashExt,
         gpio::{ExtiPin, Output, Pin},
+        i2c::{self, BlockingI2c},
         prelude::*,
         rcc::RccExt,
         spi::{Mode, Phase, Polarity, Spi},
@@ -124,6 +133,33 @@ mod app {
         let status = CanaryStatus::Idle;
         blinker::spawn().unwrap();
 
+        // Init Display
+        let display_i2c = BlockingI2c::i2c1(
+            cx.device.I2C1,
+            (
+                gpiob.pb6.into_alternate_open_drain(&mut gpiob.crl), // scl
+                gpiob.pb7.into_alternate_open_drain(&mut gpiob.crl), // sda
+            ),
+            &mut afio.mapr,
+            i2c::Mode::Fast {
+                frequency: 400_000.Hz(),
+                duty_cycle: i2c::DutyCycle::Ratio2to1,
+            },
+            clocks,
+            1000,
+            10,
+            1000,
+            1000,
+        );
+        let interface = I2CDisplayInterface::new(display_i2c);
+        let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+            .into_buffered_graphics_mode();
+        display.init().unwrap();
+
+        // Init DisplayManager
+        let mut display_manager = DisplayManager::default_with_display(display);
+        display_manager.render();
+
         // Init SD Card
         rprintln!("-> SD Card");
         let volume_manager = {
@@ -149,9 +185,6 @@ mod app {
 
             sdmmc::VolumeManager::<_, _, 2, 2, 1>::new_with_limits(sd_card, FakeTimeSource {}, 5000)
         };
-
-        // Init DisplayManager
-        let display_manager = DisplayManager::default();
 
         (
             Shared {

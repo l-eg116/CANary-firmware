@@ -1,6 +1,22 @@
-use core::fmt::Debug;
+use core::fmt::{Debug, Write};
 
+use embedded_graphics::{
+    geometry::Point,
+    mono_font::{ascii::FONT_6X10, MonoTextStyle},
+    pixelcolor::BinaryColor,
+    text::Text,
+    Drawable,
+};
+use heapless::String;
 use rtt_target::rprintln;
+use ssd1306::{
+    mode::BufferedGraphicsMode, prelude::I2CInterface, size::DisplaySize128x64, Ssd1306,
+};
+use stm32f1xx_hal::{
+    gpio::{Alternate, OpenDrain, Pin},
+    i2c::BlockingI2c,
+    pac::I2C1,
+};
 
 use self::DisplayScreenVariant as DSV;
 use crate::{
@@ -8,22 +24,54 @@ use crate::{
     can::{Bitrate, EmissionMode},
 };
 
-#[derive(Debug)]
+pub type Display = Ssd1306<
+    I2CInterface<
+        BlockingI2c<
+            I2C1,
+            (
+                Pin<'B', 6, Alternate<OpenDrain>>,
+                Pin<'B', 7, Alternate<OpenDrain>>,
+            ),
+        >,
+    >,
+    DisplaySize128x64,
+    BufferedGraphicsMode<DisplaySize128x64>,
+>;
+
 pub struct DisplayManager {
+    display: Display,
     current_screen: DisplayScreen,
     pub state: DisplayState,
 }
 
 impl DisplayManager {
     // procedures communes à tous les écrans
-    pub fn default() -> DisplayManager {
+    pub fn default_with_display(display: Display) -> DisplayManager {
         DisplayManager {
+            display,
             current_screen: DisplayScreen::default(),
             state: DisplayState::default(),
         }
     }
 
-    pub fn render(&self) {
+    pub fn render(&mut self) {
+        let mut txt = String::<256>::new();
+        txt.write_fmt(format_args!(
+            "[{:?}]\n{:#?}",
+            self.current_screen, self.state
+        ))
+        .unwrap();
+
+        self.display.clear_buffer();
+        Text::new(
+            &txt,
+            Point::new(0, 6),
+            MonoTextStyle::new(&FONT_6X10, BinaryColor::On),
+        )
+        .draw(&mut self.display)
+        .unwrap();
+        self.display.flush().unwrap();
+
         rprintln!("{:#?}", self);
     }
 
@@ -34,6 +82,19 @@ impl DisplayManager {
 
     pub fn current_screen(&self) -> &DisplayScreen {
         &self.current_screen
+    }
+}
+
+impl Debug for DisplayManager {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{{
+    current_screen: {:#?},
+    state: {:#?}\n
+}}",
+            self.current_screen, self.state
+        )
     }
 }
 
