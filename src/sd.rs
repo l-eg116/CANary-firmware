@@ -1,14 +1,12 @@
-use core::fmt::Write;
-use core::str::FromStr;
+use core::{cmp::Ordering, fmt::Write, str::FromStr};
 
 use bxcan::{Frame, StandardId};
-use embedded_sdmmc as sdmmc;
+use embedded_sdmmc::{self as sdmmc, ShortFileName};
 use heapless::{String, Vec};
 use rtic_monotonics::Monotonic;
 use stm32f1xx_hal::gpio::{Alternate, Pin};
 
-use crate::app::Mono;
-use crate::spi::*;
+use crate::{app::Mono, spi::*};
 
 // Note : for performances the buffer should be at least 46 bytes since it's the
 // number of characters in a standard can log file (including '\n')
@@ -125,4 +123,42 @@ pub fn frame_to_log(frame: &Frame) -> String<LOG_LINE_LEN> {
         .expect("frame should fit in line");
 
     log_line
+}
+
+pub fn index_dir<const N: usize>(
+    dir: &mut Directory,
+    content: &mut Vec<(bool, ShortFileName), N>,
+    dirs_only: bool,
+) -> Result<(), sdmmc::Error<sdmmc::SdCardError>> {
+    dir.iterate_dir(|e| {
+        if dirs_only && !e.attributes.is_directory() {
+            return;
+        }
+        let e = (e.attributes.is_directory(), e.name.clone());
+
+        let mut i = 0;
+        while i < content.len() {
+            if match (content[i].0, e.0) {
+                (false, true) => Ordering::Greater,
+                (true, false) => Ordering::Less,
+                _ => core::str::from_utf8(content[i].1.base_name())
+                    .unwrap_or("")
+                    .cmp(core::str::from_utf8(e.1.base_name()).unwrap_or("")),
+            }
+            .is_ge()
+            {
+                break;
+            }
+            i += 1;
+        }
+        let _ = content.insert(i, e);
+    })?;
+
+    if content.is_empty() {
+        content
+            .push((true, ShortFileName::this_dir()))
+            .expect("there is space");
+    }
+
+    Ok(())
 }
