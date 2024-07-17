@@ -2,7 +2,7 @@ use core::fmt::Write;
 use core::str::FromStr;
 
 use bxcan::{Frame, StandardId};
-use embedded_sdmmc::{self as sdmmc};
+use embedded_sdmmc as sdmmc;
 use heapless::{String, Vec};
 use rtic_monotonics::Monotonic;
 use stm32f1xx_hal::gpio::{Alternate, Pin};
@@ -22,6 +22,7 @@ pub type SdCard = sdmmc::SdCard<
         Pin<'B', 14>,
         Pin<'B', 15, Alternate>,
     )>,
+    OutputPinWrapper<'B', 12>,
     Mono,
 >;
 pub type VolumeManager = sdmmc::VolumeManager<SdCard, FakeTimeSource, 2, 2>;

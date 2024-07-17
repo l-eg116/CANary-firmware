@@ -171,9 +171,14 @@ mod app {
                     SD_SPI_CLK_MHZ.MHz(),
                     clocks,
                 ),
-                cs: gpiob.pb12.into_push_pull_output(&mut gpiob.crh),
             };
-            let sd_card = embedded_sdmmc::SdCard::new(sd_spi, Mono);
+            let sd_card = sdmmc::SdCard::new(
+                sd_spi,
+                OutputPinWrapper {
+                    pin: gpiob.pb12.into_push_pull_output(&mut gpiob.crh), // cs
+                },
+                Mono,
+            );
             rprintln!("Found SD card with size {:?}", sd_card.num_bytes());
 
             sdmmc::VolumeManager::<_, _, 2, 2, 1>::new_with_limits(sd_card, FakeTimeSource {}, 5000)

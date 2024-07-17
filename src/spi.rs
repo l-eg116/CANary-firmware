@@ -3,6 +3,7 @@ use core::cmp::max;
 use cortex_m::prelude::*;
 use embedded_hal::{
     delay::DelayNs,
+    digital::OutputPin,
     spi::{self, Operation::*, SpiDevice},
 };
 use embedded_sdmmc::{TimeSource, Timestamp};
@@ -17,7 +18,6 @@ use crate::app::{Mono, TICK_RATE};
 
 pub struct SpiWrapper<PINS> {
     pub spi: Spi<SPI2, Spi2NoRemap, PINS, u8>,
-    pub cs: Pin<'B', 12, Output>,
 }
 
 impl<PINS> spi::ErrorType for SpiWrapper<PINS> {
@@ -36,7 +36,6 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
         operations: &mut [embedded_hal::spi::Operation<'_, u8>],
     ) -> Result<(), Self::Error> {
         let mut res = Ok(());
-        self.cs.set_high();
 
         for operation in operations {
             if res.is_err() {
@@ -80,8 +79,27 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
             }
         }
 
-        self.cs.set_low();
         return res;
+    }
+}
+
+pub struct OutputPinWrapper<const P: char, const N: u8> {
+    pub pin: Pin<P, N, Output>,
+}
+
+impl<const P: char, const N: u8> embedded_hal::digital::ErrorType for OutputPinWrapper<P, N> {
+    type Error = embedded_hal::digital::ErrorKind;
+}
+
+impl<const P: char, const N: u8> OutputPin for OutputPinWrapper<P, N> {
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        self.pin.set_high();
+        Ok(())
+    }
+
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        self.pin.set_low();
+        Ok(())
     }
 }
 
