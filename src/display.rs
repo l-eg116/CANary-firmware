@@ -7,7 +7,8 @@ use embedded_graphics::{
     text::Text,
     Drawable,
 };
-use heapless::String;
+use embedded_sdmmc::ShortFileName;
+use heapless::{String, Vec};
 use rtt_target::rprintln;
 use ssd1306::{
     mode::BufferedGraphicsMode, prelude::I2CInterface, size::DisplaySize128x64, Ssd1306,
@@ -20,6 +21,7 @@ use stm32f1xx_hal::{
 
 use self::DisplayScreenVariant as DSV;
 use crate::{
+    app::{MAX_SD_INDEX_AMOUNT, MAX_SD_INDEX_DEPTH},
     buttons::Button,
     can::{Bitrate, EmissionMode},
 };
@@ -55,12 +57,9 @@ impl DisplayManager {
     }
 
     pub fn render(&mut self) {
-        let mut txt = String::<256>::new();
-        txt.write_fmt(format_args!(
-            "[{:?}]\n{:#?}",
-            self.current_screen, self.state
-        ))
-        .unwrap();
+        let mut txt = String::<128>::new();
+        txt.write_fmt(format_args!("{:#?}", self.current_screen))
+            .unwrap();
 
         self.display.clear_buffer();
         Text::new(
@@ -91,9 +90,14 @@ impl Debug for DisplayManager {
             f,
             "{{
     current_screen: {:#?},
-    state: {:#?}\n
+    state: {:#?},
 }}",
-            self.current_screen, self.state
+            self.current_screen,
+            DisplayState {
+                dir_path: self.state.dir_path.clone(),
+                dir_content: Vec::new(),
+                ..self.state
+            }
         )
     }
 }
@@ -103,12 +107,16 @@ pub enum DisplayScreen {
     Home {
         selected_item: HomeItem,
     },
-    EmissionFrameSelection {},
+    EmissionFrameSelection {
+        selected_index: usize,
+    },
     FrameEmission,
     FrameEmissionSettings {
         selected_item: FrameEmissionSettingsItems,
     },
-    CaptureFrameSelection {},
+    CaptureFrameSelection {
+        selected_index: usize,
+    },
     FrameCapture,
 }
 
@@ -131,12 +139,12 @@ impl DisplayScreen {
             DSV::Home => Self::Home {
                 selected_item: HomeItem::Emit,
             },
-            DSV::EmissionFrameSelection => Self::EmissionFrameSelection {},
+            DSV::EmissionFrameSelection => Self::EmissionFrameSelection { selected_index: 0 },
             DSV::FrameEmission => Self::FrameEmission,
             DSV::FrameEmissionSettings => Self::FrameEmissionSettings {
                 selected_item: FrameEmissionSettingsItems::Bitrate,
             },
-            DSV::CaptureFrameSelection => Self::CaptureFrameSelection {},
+            DSV::CaptureFrameSelection => Self::CaptureFrameSelection { selected_index: 0 },
             DSV::FrameCapture => Self::FrameCapture,
         }
     }
@@ -145,6 +153,7 @@ impl DisplayScreen {
         match self {
             Self::Home { selected_item } => match button {
                 Button::Ok => {
+                    state.running = true;
                     *self = Self::default_variant(match selected_item {
                         HomeItem::Capture => DSV::CaptureFrameSelection,
                         HomeItem::Emit => DSV::EmissionFrameSelection,
@@ -154,12 +163,43 @@ impl DisplayScreen {
                 Button::Left => *selected_item = HomeItem::Emit,
                 _ => {}
             },
-            Self::EmissionFrameSelection {} => match button {
-                Button::Ok => *self = Self::default_variant(DSV::FrameEmission),
-                Button::Up => todo!(),
-                Button::Down => todo!(),
-                Button::Right => todo!(),
+            Self::EmissionFrameSelection { selected_index } => match button {
+                Button::Up => {
+                    *selected_index = selected_index.wrapping_sub(1);
+                    if *selected_index >= state.dir_content.len() {
+                        *selected_index = state.dir_content.len().saturating_sub(1);
+                    }
+                    rprintln!("selected {:?}", state.dir_content[*selected_index]);
+                }
+                Button::Down => {
+                    *selected_index = selected_index.wrapping_add(1);
+                    if *selected_index >= state.dir_content.len() {
+                        *selected_index = 0;
+                    }
+                    rprintln!("selected {:?}", state.dir_content[*selected_index]);
+                }
+                Button::Right | Button::Ok => match &state.dir_content[*selected_index] {
+                    (true, parent_dir) if parent_dir == &ShortFileName::parent_dir() => {
+                        state.dir_path.pop();
+                        *selected_index = 0;
+                        state.running = true;
+                    }
+                    (true, this_dir) if this_dir == &ShortFileName::this_dir() => {
+                        *selected_index = 0;
+                        state.running = true;
+                    }
+                    (true, dir_name) => {
+                        state.dir_path.push(dir_name.clone()).unwrap();
+                        *selected_index = 0;
+                        state.running = true;
+                    }
+                    (false, file_name) => {
+                        state.dir_path.push(file_name.clone()).unwrap();
+                        *self = Self::default_variant(DSV::FrameEmission);
+                    }
+                },
                 Button::Left => {
+                    state.clear_sd_index();
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
                     }
@@ -175,6 +215,7 @@ impl DisplayScreen {
                 }
                 (Button::Right, false) => *self = Self::default_variant(DSV::FrameEmissionSettings),
                 (Button::Left, false) => {
+                    state.clear_sd_index();
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
                     }
@@ -194,14 +235,56 @@ impl DisplayScreen {
                     FrameEmissionSettingsItems::Mode => state.emission_mode.decrement(),
                 },
             },
-            Self::CaptureFrameSelection {} => match button {
-                Button::Ok => *self = Self::default_variant(DSV::FrameCapture),
-                Button::Up => todo!(),
-                Button::Down => todo!(),
-                Button::Right => todo!(),
+            Self::CaptureFrameSelection { selected_index } => match button {
+                Button::Ok => match &state.dir_content[*selected_index] {
+                    (true, parent_dir) if parent_dir == &ShortFileName::parent_dir() => {
+                        state.dir_path.pop();
+                        *self = Self::default_variant(DSV::FrameCapture);
+                    }
+                    (true, this_dir) if this_dir == &ShortFileName::this_dir() => {
+                        *self = Self::default_variant(DSV::FrameCapture);
+                    }
+                    (true, dir_name) => {
+                        state.dir_path.push(dir_name.clone()).unwrap();
+                        *self = Self::default_variant(DSV::FrameCapture);
+                    }
+                    (false, _) => unreachable!(),
+                },
+                Button::Up => {
+                    *selected_index = selected_index.wrapping_sub(1);
+                    if *selected_index >= state.dir_content.len() {
+                        *selected_index = state.dir_content.len().saturating_sub(1);
+                    }
+                    rprintln!("selected {:?}", state.dir_content[*selected_index]);
+                }
+                Button::Down => {
+                    *selected_index = selected_index.wrapping_add(1);
+                    if *selected_index >= state.dir_content.len() {
+                        *selected_index = 0;
+                    }
+                    rprintln!("selected {:?}", state.dir_content[*selected_index]);
+                }
+                Button::Right => match &state.dir_content[*selected_index] {
+                    (true, parent_dir) if parent_dir == &ShortFileName::parent_dir() => {
+                        state.dir_path.pop();
+                        *selected_index = 0;
+                        state.running = true;
+                    }
+                    (true, this_dir) if this_dir == &ShortFileName::this_dir() => {
+                        *selected_index = 0;
+                        state.running = true;
+                    }
+                    (true, dir_name) => {
+                        state.dir_path.push(dir_name.clone()).unwrap();
+                        *selected_index = 0;
+                        state.running = true;
+                    }
+                    (false, _) => unreachable!(),
+                },
                 Button::Left => {
+                    state.clear_sd_index();
                     *self = Self::Home {
-                        selected_item: HomeItem::Capture,
+                        selected_item: HomeItem::Emit,
                     }
                 }
             },
@@ -211,6 +294,7 @@ impl DisplayScreen {
                 (Button::Down, false) => state.bitrate.decrement(),
                 (Button::Right, false) => state.capture_silent = !state.capture_silent,
                 (Button::Left, false) => {
+                    state.clear_sd_index();
                     *self = Self::Home {
                         selected_item: HomeItem::Capture,
                     }
@@ -228,6 +312,8 @@ pub struct DisplayState {
     pub emission_count: u8,
     pub capture_silent: bool,
     pub running: bool,
+    pub dir_path: Vec<ShortFileName, MAX_SD_INDEX_DEPTH>,
+    pub dir_content: Vec<(bool, ShortFileName), MAX_SD_INDEX_AMOUNT>,
 }
 
 impl DisplayState {
@@ -238,7 +324,14 @@ impl DisplayState {
             emission_count: 1,
             capture_silent: false,
             running: false,
+            dir_path: Vec::new(),
+            dir_content: Vec::new(),
         }
+    }
+
+    pub fn clear_sd_index(&mut self) {
+        self.dir_path = Vec::new();
+        self.dir_content = Vec::new();
     }
 }
 

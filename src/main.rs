@@ -21,7 +21,7 @@ mod app {
     use fugit::Instant;
     use heapless::{
         spsc::{Consumer, Producer, Queue},
-        String,
+        String, Vec,
     };
     use rtic_monotonics::systick::prelude::*;
     use rtt_target::{rprintln, rtt_init_print};
@@ -42,8 +42,10 @@ mod app {
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
     pub const CLOCK_RATE_MHZ: u32 = 64;
     pub const TICK_RATE: u32 = 1_000;
-    pub const DEBOUNCE_DELAY_MS: u32 = 10;
-    pub const SD_SPI_CLK_MHZ: u32 = 16;
+    pub const DEBOUNCE_DELAY_MS: u32 = 100;
+    pub const SD_SPI_CLK_MHZ: u32 = 2;
+    pub const MAX_SD_INDEX_AMOUNT: usize = 32;
+    pub const MAX_SD_INDEX_DEPTH: usize = 8;
 
     systick_monotonic!(Mono, TICK_RATE);
 
@@ -396,6 +398,25 @@ mod app {
         (cx.shared.display_manager, cx.shared.can).lock(|dm, can| {
             match (dm.current_screen(), &dm.state) {
                 (
+                    DisplayScreen::EmissionFrameSelection { .. },
+                    DisplayState { running: true, .. },
+                ) => {
+                    sd_indexer::spawn(false).expect("sd_indexer isn't running");
+                }
+                (
+                    DisplayScreen::CaptureFrameSelection { .. },
+                    DisplayState { running: true, .. },
+                ) => {
+                    sd_indexer::spawn(true).expect("sd_indexer isn't running");
+                }
+                (
+                    DisplayScreen::EmissionFrameSelection { .. }
+                    | DisplayScreen::CaptureFrameSelection { .. },
+                    DisplayState { running: false, .. },
+                ) => {
+                    // dm.render();
+                }
+                (
                     DisplayScreen::FrameEmission,
                     DisplayState {
                         running: true,
@@ -429,6 +450,30 @@ mod app {
                 _ => {}
             }
         });
+    }
+
+    #[task(
+        priority = 2,
+        shared = [volume_manager, display_manager],
+        // local = [],
+    )]
+    async fn sd_indexer(cx: sd_indexer::Context, dirs_only: bool) {
+        (cx.shared.volume_manager, cx.shared.display_manager).lock(|vm, dm| {
+            let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
+            let mut dir = sd_volume.open_root_dir().unwrap();
+
+            for dir_name in &dm.state.dir_path {
+                dir.change_dir(dir_name).unwrap();
+            }
+
+            dm.state.dir_content = Vec::new();
+            index_dir(&mut dir, &mut dm.state.dir_content, dirs_only).unwrap();
+
+            rprintln!("{:?}", dm.state.dir_content);
+            dm.state.running = false;
+        });
+
+        state_updater::spawn().expect("could not update state");
     }
 
     #[task(
