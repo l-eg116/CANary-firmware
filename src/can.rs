@@ -51,7 +51,7 @@ impl CanContext {
             .set_bit_timing(bitrate.as_bit_timing())
             .set_silent(silent)
             .enable();
-        while let Ok(_) = self.bus.receive() {} // Empty can rx FIFOs
+        // TODO : find a way to empty FIFO before proceeding
         self.bus
             .enable_interrupt(bxcan::Interrupt::Fifo0MessagePending);
     }
