@@ -24,3 +24,14 @@ stm32f1xx-hal = { version = "0.10.0", features = [
 	"rtic",
 ] }
 tinybmp = "0.6.0"
+
+[profile.dev]
+opt-level = "s"
+lto = "thin"
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+debug = "none"
+panic = "abort"
+strip = true
