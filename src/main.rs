@@ -17,7 +17,7 @@ mod app {
     use core::fmt::Write;
 
     use bxcan::Frame;
-    use embedded_sdmmc as sdmmc;
+    use embedded_sdmmc::{self as sdmmc, ShortFileName};
     use fugit::Instant;
     use heapless::{
         spsc::{Consumer, Producer, Queue},
@@ -43,7 +43,7 @@ mod app {
     pub const CLOCK_RATE_MHZ: u32 = 64;
     pub const TICK_RATE: u32 = 1_000;
     pub const DEBOUNCE_DELAY_MS: u32 = 100;
-    pub const SD_SPI_CLK_MHZ: u32 = 2;
+    pub const SD_SPI_CLK_MHZ: u32 = 16;
     pub const MAX_SD_INDEX_AMOUNT: usize = 32;
     pub const MAX_SD_INDEX_DEPTH: usize = 8;
 
@@ -426,8 +426,7 @@ mod app {
                     },
                 ) => {
                     can.enable_tx(*bitrate, *emission_mode);
-                    sd_reader::spawn("boot.log").expect("sd_reader isn't running");
-                    // TODO : make sd_readers parameter consistent
+                    sd_reader::spawn().expect("sd_reader isn't running");
                 }
                 (
                     DisplayScreen::FrameCapture,
@@ -481,24 +480,33 @@ mod app {
         shared = [volume_manager, display_manager],
         local = [can_tx_producer],
     )]
-    async fn sd_reader(mut cx: sd_reader::Context, file_name: &str) {
+    async fn sd_reader(mut cx: sd_reader::Context) {
         let tx_queue = cx.local.can_tx_producer;
         let mut emission_count = match cx.shared.display_manager.lock(|dm| dm.state.emission_count)
         {
             0 => None,
             n => Some(n),
         };
-        let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
-            let mut root_dir = sd_volume.open_root_dir().unwrap();
+            let mut dir = sd_volume.open_root_dir().unwrap();
+            let mut file = ShortFileName::this_dir();
+
+            cx.shared.display_manager.lock(|dm| {
+                let (_file, path) = dm.state.dir_path.split_last().expect("path is provided");
+                file = _file.clone();
+                for dir_name in path {
+                    rprintln!("{:?}", dir_name);
+                    dir.change_dir(dir_name).unwrap();
+                }
+            });
+
+            let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
 
             while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
                 let logs = CanLogsInterator::new(
-                    root_dir
-                        .open_file_in_dir(file_name, sdmmc::Mode::ReadOnly)
-                        .unwrap(),
+                    dir.open_file_in_dir(&file, sdmmc::Mode::ReadOnly).unwrap(),
                 );
 
                 for frame in logs {
@@ -528,25 +536,28 @@ mod app {
     )]
     async fn sd_writer(mut cx: sd_writer::Context) {
         let rx_queue = cx.local.can_rx_consumer;
-        let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
-
-        // while let Some(_) = rx_queue.dequeue() {} // Queue already empty
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
-            let mut root_dir = sd_volume.open_root_dir().unwrap();
+            let mut dir = sd_volume.open_root_dir().unwrap();
+
+            cx.shared.display_manager.lock(|dm| {
+                for dir_name in &dm.state.dir_path {
+                    dir.change_dir(dir_name).unwrap();
+                }
+            });
 
             let mut file_name = String::<12>::new();
             file_name
                 .write_fmt(format_args!("{:08}.log", Mono::now().ticks()))
                 .unwrap();
-            let mut logs = root_dir
+            let mut logs = dir
                 .open_file_in_dir(&file_name[..], sdmmc::Mode::ReadWriteCreateOrTruncate)
                 .unwrap();
 
             rprintln!("Writing started to '{}'", file_name);
 
-            while get_running() {
+            while cx.shared.display_manager.lock(|dm| dm.state.running) {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
