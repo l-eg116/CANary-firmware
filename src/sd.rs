@@ -154,10 +154,10 @@ pub fn index_dir<const N: usize>(
         let _ = content.insert(i, e);
     })?;
 
-    if content.is_empty() {
+    if content.is_empty() || (dirs_only && !content.contains(&(true, ShortFileName::this_dir()))) {
         content
-            .push((true, ShortFileName::this_dir()))
-            .expect("there is space");
+            .insert(0, (true, ShortFileName::this_dir()))
+            .expect("there is space"); // TODO : handle edge case : content.is_full()
     }
 
     Ok(())
