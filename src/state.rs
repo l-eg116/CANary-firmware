@@ -42,6 +42,17 @@ impl StateManager {
         self.display.clear_buffer();
         match &self.current_screen {
             Screen::Home { selected_item } => draw_home(&mut self.display, selected_item),
+            Screen::CaptureSelection { selected_index }
+            | Screen::EmissionSelection { selected_index } => draw_file_selection(
+                &mut self.display,
+                self.state.dir_path.last(),
+                if self.state.running {
+                    &[]
+                } else {
+                    &self.state.dir_content
+                },
+                *selected_index,
+            ),
             _ => {
                 Text::new(
                     &txt,

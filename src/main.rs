@@ -398,7 +398,7 @@ mod app {
                     Screen::EmissionSelection { .. } | Screen::CaptureSelection { .. },
                     State { running: false, .. },
                 ) => {
-                    // dm.render();
+                    dm.render();
                 }
                 (
                     Screen::Emission,

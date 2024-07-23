@@ -1,4 +1,4 @@
-use core::str::FromStr;
+use core::{fmt::Write, str::FromStr};
 
 use embedded_graphics::{
     geometry::AnchorX,
@@ -15,6 +15,7 @@ use embedded_graphics::{
     },
     text::{Alignment, Baseline, Text, TextStyle, TextStyleBuilder},
 };
+use embedded_sdmmc::ShortFileName;
 use heapless::String;
 use ssd1306::{
     mode::BufferedGraphicsMode, prelude::I2CInterface, size::DisplaySize128x64, Ssd1306,
@@ -86,6 +87,14 @@ static LEFT_BOTTOM: TextStyle = TextStyleBuilder::new()
     .alignment(Alignment::Left)
     .baseline(Baseline::Bottom)
     .build();
+static RIGHT_BOTTOM: TextStyle = TextStyleBuilder::new()
+    .alignment(Alignment::Right)
+    .baseline(Baseline::Bottom)
+    .build();
+static RIGHT_TOP: TextStyle = TextStyleBuilder::new()
+    .alignment(Alignment::Right)
+    .baseline(Baseline::Top)
+    .build();
 
 static BUTTON_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
     .stroke_color(BinaryColor::On)
@@ -107,6 +116,85 @@ fn draw_whole_line(text: Text<MonoTextStyle<BinaryColor>>, display: &mut Display
         ))
         .draw(display);
     let _ = text.draw(display);
+}
+
+fn draw_left_hint(display: &mut Display, hint: &str) {
+    let text_hint = Text::with_text_style(
+        hint,
+        Point::new(7, (DISPLAY_HEIGHT - 1) as i32),
+        DEFAULT_TEXT_STYLE,
+        LEFT_BOTTOM,
+    );
+    let hint_outline = RoundedRectangle::new(
+        Rectangle::new(
+            text_hint.bounding_box().top_left - Point::new(9, 1),
+            text_hint.bounding_box().size + Size::new(9 + 2, 1 + 2),
+        ),
+        CornerRadii::new(Size::new_equal(4)),
+    );
+
+    let _ = Text::with_text_style(
+        "<",
+        Point::new(0, (DISPLAY_HEIGHT - 1) as i32),
+        DEFAULT_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+    let _ = text_hint.draw(display);
+    let _ = hint_outline.draw_styled(&BUTTON_STROKE, display);
+}
+fn draw_right_hint(display: &mut Display, hint: &str) {
+    let text_hint = Text::with_text_style(
+        hint,
+        Point::new((DISPLAY_WIDTH - 8) as i32, (DISPLAY_HEIGHT - 1) as i32),
+        DEFAULT_TEXT_STYLE,
+        RIGHT_BOTTOM,
+    );
+    let hint_outline = RoundedRectangle::new(
+        Rectangle::new(
+            text_hint.bounding_box().top_left - Point::new(3, 1),
+            text_hint.bounding_box().size + Size::new(3 + 9, 1 + 2),
+        ),
+        CornerRadii::new(Size::new_equal(4)),
+    );
+
+    let _ = Text::with_text_style(
+        ">",
+        Point::new((DISPLAY_WIDTH - 1) as i32, (DISPLAY_HEIGHT - 1) as i32),
+        DEFAULT_TEXT_STYLE,
+        RIGHT_BOTTOM,
+    )
+    .draw(display);
+    let _ = text_hint.draw(display);
+    let _ = hint_outline.draw_styled(&BUTTON_STROKE, display);
+}
+fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
+    let text_hint = Text::with_text_style(
+        hint,
+        Point::new(
+            (DISPLAY_WIDTH / 2 + 3) as i32 + x_displacement,
+            (DISPLAY_HEIGHT - 1) as i32,
+        ),
+        DEFAULT_TEXT_STYLE,
+        CENTER_BOTTOM,
+    );
+    let hint_outline = RoundedRectangle::new(
+        Rectangle::new(
+            text_hint.bounding_box().top_left - Point::new(7 + 2, 1),
+            text_hint.bounding_box().size + Size::new((7 + 2) + 2, 1 + 2),
+        ),
+        CornerRadii::new(Size::new_equal(4)),
+    );
+
+    let _ = Text::with_text_style(
+        "@",
+        text_hint.bounding_box().top_left - Point::new(1, 0),
+        DEFAULT_TEXT_STYLE,
+        RIGHT_TOP,
+    )
+    .draw(display);
+    let _ = text_hint.draw(display);
+    let _ = hint_outline.draw_styled(&BUTTON_STROKE, display);
 }
 
 pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
@@ -152,4 +240,81 @@ pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
     .draw_styled(capt_styles.0, display);
     let _ = Text::with_text_style("Capture", capt_button_pos, capt_styles.1, CENTER_MIDDLE)
         .draw(display);
+}
+
+pub fn draw_file_selection(
+    display: &mut Display,
+    current_dir: Option<&ShortFileName>,
+    content: &[(bool, ShortFileName)],
+    selected_index: usize,
+) {
+    let file_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/file.bmp")).unwrap();
+    let dir_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/directory.bmp")).unwrap();
+    let chevron_icon =
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevron_right.bmp")).unwrap();
+
+    let mut dir_str = String::<16>::new();
+    if let Some(current_dir) = current_dir {
+        dir_str
+            .write_fmt(format_args!("{}", current_dir))
+            .expect("ShortFileNames.len() <= 12");
+        dir_str.make_ascii_lowercase();
+    } else {
+        dir_str.push_str("root").unwrap();
+    }
+    draw_whole_line(
+        Text::with_text_style(
+            &dir_str,
+            Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
+            HEADER_TEXT_STYLE,
+            CENTER_BOTTOM,
+        ),
+        display,
+    );
+
+    draw_left_hint(display, "back");
+    draw_center_hint(display, "select", -4);
+    draw_right_hint(display, "enter");
+
+    if content.len() == 0 {
+        return;
+    }
+
+    let (content, highlighted_i) = match selected_index {
+        0 => (&content[0..=2.min(content.len() - 1)], 0),
+        n if content.len() <= 3 => (content, n),
+        n if n == content.len() - 1 => (&content[content.len() - 3..content.len()], 2),
+        n => (&content[n - 1..=n + 1], 1),
+    };
+
+    for (i, (is_dir, name)) in content.iter().enumerate() {
+        let _ = Image::new(
+            if i == highlighted_i as usize {
+                &chevron_icon
+            } else if *is_dir {
+                &dir_icon
+            } else {
+                &file_icon
+            },
+            Point::new(0, TEXT_LINE_2 + 13 * i as i32 - 11),
+        )
+        .draw(display);
+
+        let mut name_str = String::<16>::new();
+        name_str
+            .write_fmt(format_args!("{}", name))
+            .expect("ShortFileNames.len() <= 12");
+        name_str.make_ascii_lowercase();
+        let _ = Text::with_text_style(
+            &name_str,
+            Point::new(13, TEXT_LINE_2 + 13 * i as i32),
+            if i == highlighted_i as usize {
+                HIGHLIGHTED_TEXT_STYLE
+            } else {
+                DEFAULT_TEXT_STYLE
+            },
+            LEFT_BOTTOM,
+        )
+        .draw(display);
+    }
 }
