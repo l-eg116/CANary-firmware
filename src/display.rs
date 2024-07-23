@@ -24,6 +24,7 @@ use crate::{
     app::{MAX_SD_INDEX_AMOUNT, MAX_SD_INDEX_DEPTH},
     buttons::Button,
     can::{Bitrate, EmissionMode},
+    screen::draw_home,
 };
 
 pub type Display = Ssd1306<
@@ -62,13 +63,18 @@ impl DisplayManager {
             .unwrap();
 
         self.display.clear_buffer();
-        Text::new(
-            &txt,
-            Point::new(0, 6),
-            MonoTextStyle::new(&FONT_6X10, BinaryColor::On),
-        )
-        .draw(&mut self.display)
-        .unwrap();
+        match &self.current_screen {
+            DisplayScreen::Home { selected_item } => draw_home(&mut self.display, selected_item),
+            _ => {
+                Text::new(
+                    &txt,
+                    Point::new(0, 6),
+                    MonoTextStyle::new(&FONT_6X10, BinaryColor::On),
+                )
+                .draw(&mut self.display)
+                .unwrap();
+            }
+        }
         self.display.flush().unwrap();
 
         rprintln!("{:#?}", self);
