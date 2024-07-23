@@ -8,6 +8,7 @@ use rtic::app;
 mod buttons;
 mod can;
 mod display;
+mod screen;
 mod sd;
 mod spi;
 mod status;
