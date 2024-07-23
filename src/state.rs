@@ -10,50 +10,27 @@ use embedded_graphics::{
 use embedded_sdmmc::ShortFileName;
 use heapless::{String, Vec};
 use rtt_target::rprintln;
-use ssd1306::{
-    mode::BufferedGraphicsMode, prelude::I2CInterface, size::DisplaySize128x64, Ssd1306,
-};
-use stm32f1xx_hal::{
-    gpio::{Alternate, OpenDrain, Pin},
-    i2c::BlockingI2c,
-    pac::I2C1,
-};
 
-use self::DisplayScreenVariant as DSV;
 use crate::{
     app::{MAX_SD_INDEX_AMOUNT, MAX_SD_INDEX_DEPTH},
     buttons::Button,
     can::{Bitrate, EmissionMode},
-    screen::draw_home,
+    render::*,
 };
 
-pub type Display = Ssd1306<
-    I2CInterface<
-        BlockingI2c<
-            I2C1,
-            (
-                Pin<'B', 6, Alternate<OpenDrain>>,
-                Pin<'B', 7, Alternate<OpenDrain>>,
-            ),
-        >,
-    >,
-    DisplaySize128x64,
-    BufferedGraphicsMode<DisplaySize128x64>,
->;
-
-pub struct DisplayManager {
+pub struct StateManager {
     display: Display,
-    current_screen: DisplayScreen,
-    pub state: DisplayState,
+    current_screen: Screen,
+    pub state: State,
 }
 
-impl DisplayManager {
+impl StateManager {
     // procedures communes à tous les écrans
-    pub fn default_with_display(display: Display) -> DisplayManager {
-        DisplayManager {
+    pub fn default_with_display(display: Display) -> Self {
+        Self {
             display,
-            current_screen: DisplayScreen::default(),
-            state: DisplayState::default(),
+            current_screen: Screen::default(),
+            state: State::default(),
         }
     }
 
@@ -64,7 +41,7 @@ impl DisplayManager {
 
         self.display.clear_buffer();
         match &self.current_screen {
-            DisplayScreen::Home { selected_item } => draw_home(&mut self.display, selected_item),
+            Screen::Home { selected_item } => draw_home(&mut self.display, selected_item),
             _ => {
                 Text::new(
                     &txt,
@@ -85,12 +62,12 @@ impl DisplayManager {
         self.render();
     }
 
-    pub fn current_screen(&self) -> &DisplayScreen {
+    pub fn current_screen(&self) -> &Screen {
         &self.current_screen
     }
 }
 
-impl Debug for DisplayManager {
+impl Debug for StateManager {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
@@ -99,7 +76,7 @@ impl Debug for DisplayManager {
     state: {:#?},
 }}",
             self.current_screen,
-            DisplayState {
+            State {
                 dir_path: self.state.dir_path.clone(),
                 dir_content: Vec::new(),
                 ..self.state
@@ -109,67 +86,67 @@ impl Debug for DisplayManager {
 }
 
 #[derive(Debug)]
-pub enum DisplayScreen {
+pub enum Screen {
     Home {
         selected_item: HomeItem,
     },
-    EmissionFrameSelection {
+    EmissionSelection {
         selected_index: usize,
     },
-    FrameEmission,
-    FrameEmissionSettings {
-        selected_item: FrameEmissionSettingsItems,
+    Emission,
+    EmissionSettings {
+        selected_item: EmissionSettingsItems,
     },
-    CaptureFrameSelection {
+    CaptureSelection {
         selected_index: usize,
     },
-    FrameCapture,
+    Capture,
 }
 
-enum DisplayScreenVariant {
+enum ScreenVariant {
     Home,
-    EmissionFrameSelection,
-    FrameEmission,
-    FrameEmissionSettings,
-    CaptureFrameSelection,
-    FrameCapture,
+    EmissionSelection,
+    Emission,
+    EmissionSettings,
+    CaptureSelection,
+    Capture,
 }
 
-impl DisplayScreen {
+impl Screen {
     pub fn default() -> Self {
-        Self::default_variant(DisplayScreenVariant::Home)
+        Self::default_variant(ScreenVariant::Home)
     }
 
-    fn default_variant(variant: DisplayScreenVariant) -> Self {
+    fn default_variant(variant: ScreenVariant) -> Self {
         match variant {
-            DSV::Home => Self::Home {
+            ScreenVariant::Home => Self::Home {
                 selected_item: HomeItem::Emit,
             },
-            DSV::EmissionFrameSelection => Self::EmissionFrameSelection { selected_index: 0 },
-            DSV::FrameEmission => Self::FrameEmission,
-            DSV::FrameEmissionSettings => Self::FrameEmissionSettings {
-                selected_item: FrameEmissionSettingsItems::Bitrate,
+            ScreenVariant::EmissionSelection => Self::EmissionSelection { selected_index: 0 },
+            ScreenVariant::Emission => Self::Emission,
+            ScreenVariant::EmissionSettings => Self::EmissionSettings {
+                selected_item: EmissionSettingsItems::Bitrate,
             },
-            DSV::CaptureFrameSelection => Self::CaptureFrameSelection { selected_index: 0 },
-            DSV::FrameCapture => Self::FrameCapture,
+            ScreenVariant::CaptureSelection => Self::CaptureSelection { selected_index: 0 },
+            ScreenVariant::Capture => Self::Capture,
         }
     }
 
-    pub fn press(&mut self, button: Button, state: &mut DisplayState) {
+    pub fn press(&mut self, button: Button, state: &mut State) {
         match self {
             Self::Home { selected_item } => match button {
                 Button::Ok => {
                     state.running = true;
                     *self = Self::default_variant(match selected_item {
-                        HomeItem::Capture => DSV::CaptureFrameSelection,
-                        HomeItem::Emit => DSV::EmissionFrameSelection,
+                        HomeItem::Capture => ScreenVariant::CaptureSelection,
+                        HomeItem::Emit => ScreenVariant::EmissionSelection,
                     })
                 }
                 Button::Right => *selected_item = HomeItem::Capture,
                 Button::Left => *selected_item = HomeItem::Emit,
                 _ => {}
             },
-            Self::EmissionFrameSelection { selected_index } => match button {
+            Self::EmissionSelection { selected_index } => match button {
                 Button::Up => {
                     *selected_index = selected_index.wrapping_sub(1);
                     if *selected_index >= state.dir_content.len() {
@@ -201,7 +178,7 @@ impl DisplayScreen {
                     }
                     (false, file_name) => {
                         state.dir_path.push(file_name.clone()).unwrap();
-                        *self = Self::default_variant(DSV::FrameEmission);
+                        *self = Self::default_variant(ScreenVariant::Emission);
                     }
                 },
                 Button::Left => {
@@ -211,7 +188,7 @@ impl DisplayScreen {
                     }
                 }
             },
-            Self::FrameEmission => match (button, state.running) {
+            Self::Emission => match (button, state.running) {
                 (Button::Ok, _) => state.running = !state.running,
                 (Button::Up, false) => {
                     state.emission_count = state.emission_count.saturating_add(1)
@@ -219,7 +196,9 @@ impl DisplayScreen {
                 (Button::Down, false) => {
                     state.emission_count = state.emission_count.saturating_sub(1)
                 }
-                (Button::Right, false) => *self = Self::default_variant(DSV::FrameEmissionSettings),
+                (Button::Right, false) => {
+                    *self = Self::default_variant(ScreenVariant::EmissionSettings)
+                }
                 (Button::Left, false) => {
                     state.clear_sd_index();
                     *self = Self::Home {
@@ -228,31 +207,31 @@ impl DisplayScreen {
                 }
                 _ => {}
             },
-            Self::FrameEmissionSettings { selected_item } => match button {
-                Button::Ok => *self = Self::default_variant(DSV::FrameEmission),
+            Self::EmissionSettings { selected_item } => match button {
+                Button::Ok => *self = Self::default_variant(ScreenVariant::Emission),
                 Button::Up => selected_item.decrement(),
                 Button::Down => selected_item.increment(),
                 Button::Right => match selected_item {
-                    FrameEmissionSettingsItems::Bitrate => state.bitrate.increment(),
-                    FrameEmissionSettingsItems::Mode => state.emission_mode.increment(),
+                    EmissionSettingsItems::Bitrate => state.bitrate.increment(),
+                    EmissionSettingsItems::Mode => state.emission_mode.increment(),
                 },
                 Button::Left => match selected_item {
-                    FrameEmissionSettingsItems::Bitrate => state.bitrate.decrement(),
-                    FrameEmissionSettingsItems::Mode => state.emission_mode.decrement(),
+                    EmissionSettingsItems::Bitrate => state.bitrate.decrement(),
+                    EmissionSettingsItems::Mode => state.emission_mode.decrement(),
                 },
             },
-            Self::CaptureFrameSelection { selected_index } => match button {
+            Self::CaptureSelection { selected_index } => match button {
                 Button::Ok => match &state.dir_content[*selected_index] {
                     (true, parent_dir) if parent_dir == &ShortFileName::parent_dir() => {
                         state.dir_path.pop();
-                        *self = Self::default_variant(DSV::FrameCapture);
+                        *self = Self::default_variant(ScreenVariant::Capture);
                     }
                     (true, this_dir) if this_dir == &ShortFileName::this_dir() => {
-                        *self = Self::default_variant(DSV::FrameCapture);
+                        *self = Self::default_variant(ScreenVariant::Capture);
                     }
                     (true, dir_name) => {
                         state.dir_path.push(dir_name.clone()).unwrap();
-                        *self = Self::default_variant(DSV::FrameCapture);
+                        *self = Self::default_variant(ScreenVariant::Capture);
                     }
                     (false, _) => unreachable!(),
                 },
@@ -294,7 +273,7 @@ impl DisplayScreen {
                     }
                 }
             },
-            Self::FrameCapture => match (button, state.running) {
+            Self::Capture => match (button, state.running) {
                 (Button::Ok, _) => state.running = !state.running,
                 (Button::Up, false) => state.bitrate.increment(),
                 (Button::Down, false) => state.bitrate.decrement(),
@@ -312,7 +291,7 @@ impl DisplayScreen {
 }
 
 #[derive(Debug)]
-pub struct DisplayState {
+pub struct State {
     pub bitrate: Bitrate,
     pub emission_mode: EmissionMode,
     pub emission_count: u8,
@@ -322,7 +301,7 @@ pub struct DisplayState {
     pub dir_content: Vec<(bool, ShortFileName), MAX_SD_INDEX_AMOUNT>,
 }
 
-impl DisplayState {
+impl State {
     pub fn default() -> Self {
         Self {
             bitrate: Bitrate::Br125kbps,
@@ -348,12 +327,12 @@ pub enum HomeItem {
 }
 
 #[derive(Debug)]
-pub enum FrameEmissionSettingsItems {
+pub enum EmissionSettingsItems {
     Bitrate,
     Mode,
 }
 
-impl FrameEmissionSettingsItems {
+impl EmissionSettingsItems {
     pub fn increment(&mut self) {
         *self = match self {
             Self::Bitrate | Self::Mode => Self::Mode,

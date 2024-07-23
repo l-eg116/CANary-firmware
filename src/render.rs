@@ -16,9 +16,31 @@ use embedded_graphics::{
     text::{Alignment, Baseline, Text, TextStyle, TextStyleBuilder},
 };
 use heapless::String;
+use ssd1306::{
+    mode::BufferedGraphicsMode, prelude::I2CInterface, size::DisplaySize128x64, Ssd1306,
+};
+use stm32f1xx_hal::{
+    gpio::{Alternate, OpenDrain, Pin},
+    i2c::BlockingI2c,
+    pac::I2C1,
+};
 use tinybmp::Bmp;
 
-use crate::display::{Display, HomeItem};
+use crate::state::HomeItem;
+
+pub type Display = Ssd1306<
+    I2CInterface<
+        BlockingI2c<
+            I2C1,
+            (
+                Pin<'B', 6, Alternate<OpenDrain>>,
+                Pin<'B', 7, Alternate<OpenDrain>>,
+            ),
+        >,
+    >,
+    DisplaySize128x64,
+    BufferedGraphicsMode<DisplaySize128x64>,
+>;
 
 const DISPLAY_WIDTH: u32 = 128;
 const DISPLAY_HEIGHT: u32 = 64;

@@ -7,10 +7,10 @@ use rtic::app;
 
 mod buttons;
 mod can;
-mod display;
-mod screen;
+mod render;
 mod sd;
 mod spi;
+mod state;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2, TIM3, TIM4])]
 mod app {
@@ -36,7 +36,7 @@ mod app {
         spi::{Mode, Phase, Polarity, Spi},
     };
 
-    use crate::{buttons::*, can::*, display::*, sd::*, spi::*};
+    use crate::{buttons::*, can::*, sd::*, spi::*, state::*};
 
     pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
@@ -55,7 +55,7 @@ mod app {
         #[lock_free]
         button_panel: ButtonPanel,
         volume_manager: VolumeManager,
-        display_manager: DisplayManager,
+        state_manager: StateManager,
     }
 
     #[local]
@@ -151,8 +151,8 @@ mod app {
         while let Err(_) = display.init() {}
 
         // Init DisplayManager
-        let mut display_manager = DisplayManager::default_with_display(display);
-        display_manager.render();
+        let mut state_manager = StateManager::default_with_display(display);
+        state_manager.render();
 
         // Init SD Card
         rprintln!("-> SD Card");
@@ -190,7 +190,7 @@ mod app {
                 can,
                 button_panel,
                 volume_manager,
-                display_manager,
+                state_manager,
             },
             Local {
                 can_tx_producer,
@@ -210,12 +210,12 @@ mod app {
 
     #[task(
         priority = 2,
-        shared = [display_manager],
+        shared = [state_manager],
         local = [status_led],
     )]
     async fn blinker(mut cx: blinker::Context) {
         loop {
-            let delay = cx.shared.display_manager.lock(|dm| {
+            let delay = cx.shared.state_manager.lock(|dm| {
                 if dm.state.running {
                     100.millis()
                 } else {
@@ -284,7 +284,7 @@ mod app {
     #[task(
         binds = EXTI4,
         priority = 8,
-        shared = [button_panel, display_manager],
+        shared = [button_panel, state_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_ok(mut cx: clicked_ok::Context) {
@@ -297,14 +297,14 @@ mod app {
         };
 
         rprintln!("Pressed OK");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Ok));
+        cx.shared.state_manager.lock(|dm| dm.press(Button::Ok));
         let _ = state_updater::spawn();
     }
 
     #[task(
         binds = EXTI0,
         priority = 8,
-        shared = [button_panel, display_manager],
+        shared = [button_panel, state_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_up(mut cx: clicked_up::Context) {
@@ -317,14 +317,14 @@ mod app {
         };
 
         rprintln!("Pressed UP");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Up));
+        cx.shared.state_manager.lock(|dm| dm.press(Button::Up));
         let _ = state_updater::spawn();
     }
 
     #[task(
         binds = EXTI1,
         priority = 8,
-        shared = [button_panel, display_manager],
+        shared = [button_panel, state_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_down(mut cx: clicked_down::Context) {
@@ -337,14 +337,14 @@ mod app {
         };
 
         rprintln!("Pressed DOWN");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Down));
+        cx.shared.state_manager.lock(|dm| dm.press(Button::Down));
         let _ = state_updater::spawn();
     }
 
     #[task(
         binds = EXTI2,
         priority = 8,
-        shared = [button_panel, display_manager],
+        shared = [button_panel, state_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_right(mut cx: clicked_right::Context) {
@@ -357,14 +357,14 @@ mod app {
         };
 
         rprintln!("Pressed RIGHT");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Right));
+        cx.shared.state_manager.lock(|dm| dm.press(Button::Right));
         let _ = state_updater::spawn();
     }
 
     #[task(
         binds = EXTI3,
         priority = 8,
-        shared = [button_panel, display_manager],
+        shared = [button_panel, state_manager],
         local = [last_press_time: Option<Instant<u32, 1, TICK_RATE>> = None],
     )]
     fn clicked_left(mut cx: clicked_left::Context) {
@@ -377,39 +377,32 @@ mod app {
         };
 
         rprintln!("Pressed LEFT");
-        cx.shared.display_manager.lock(|dm| dm.press(Button::Left));
+        cx.shared.state_manager.lock(|dm| dm.press(Button::Left));
         let _ = state_updater::spawn();
     }
 
     #[task(
         priority = 7,
-        shared = [display_manager, can],
+        shared = [state_manager, can],
     )]
     async fn state_updater(cx: state_updater::Context) {
-        (cx.shared.display_manager, cx.shared.can).lock(|dm, can| {
+        (cx.shared.state_manager, cx.shared.can).lock(|dm, can| {
             match (dm.current_screen(), &dm.state) {
-                (
-                    DisplayScreen::EmissionFrameSelection { .. },
-                    DisplayState { running: true, .. },
-                ) => {
+                (Screen::EmissionSelection { .. }, State { running: true, .. }) => {
                     sd_indexer::spawn(false).expect("sd_indexer isn't running");
                 }
-                (
-                    DisplayScreen::CaptureFrameSelection { .. },
-                    DisplayState { running: true, .. },
-                ) => {
+                (Screen::CaptureSelection { .. }, State { running: true, .. }) => {
                     sd_indexer::spawn(true).expect("sd_indexer isn't running");
                 }
                 (
-                    DisplayScreen::EmissionFrameSelection { .. }
-                    | DisplayScreen::CaptureFrameSelection { .. },
-                    DisplayState { running: false, .. },
+                    Screen::EmissionSelection { .. } | Screen::CaptureSelection { .. },
+                    State { running: false, .. },
                 ) => {
                     // dm.render();
                 }
                 (
-                    DisplayScreen::FrameEmission,
-                    DisplayState {
+                    Screen::Emission,
+                    State {
                         running: true,
                         bitrate,
                         emission_mode,
@@ -420,8 +413,8 @@ mod app {
                     sd_reader::spawn().expect("sd_reader isn't running");
                 }
                 (
-                    DisplayScreen::FrameCapture,
-                    DisplayState {
+                    Screen::Capture,
+                    State {
                         running: true,
                         bitrate,
                         capture_silent,
@@ -431,10 +424,7 @@ mod app {
                     can.enable_rx(*bitrate, *capture_silent);
                     sd_writer::spawn().expect("sd_writer isn't running");
                 }
-                (
-                    DisplayScreen::FrameEmission | DisplayScreen::FrameCapture,
-                    DisplayState { running: false, .. },
-                ) => {
+                (Screen::Emission | Screen::Capture, State { running: false, .. }) => {
                     can.disable();
                 }
                 _ => {}
@@ -444,11 +434,11 @@ mod app {
 
     #[task(
         priority = 2,
-        shared = [volume_manager, display_manager],
+        shared = [volume_manager, state_manager],
         // local = [],
     )]
     async fn sd_indexer(cx: sd_indexer::Context, dirs_only: bool) {
-        (cx.shared.volume_manager, cx.shared.display_manager).lock(|vm, dm| {
+        (cx.shared.volume_manager, cx.shared.state_manager).lock(|vm, dm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut dir = sd_volume.open_root_dir().unwrap();
 
@@ -468,13 +458,12 @@ mod app {
 
     #[task(
         priority = 1,
-        shared = [volume_manager, display_manager],
+        shared = [volume_manager, state_manager],
         local = [can_tx_producer],
     )]
     async fn sd_reader(mut cx: sd_reader::Context) {
         let tx_queue = cx.local.can_tx_producer;
-        let mut emission_count = match cx.shared.display_manager.lock(|dm| dm.state.emission_count)
-        {
+        let mut emission_count = match cx.shared.state_manager.lock(|dm| dm.state.emission_count) {
             0 => None,
             n => Some(n),
         };
@@ -484,7 +473,7 @@ mod app {
             let mut dir = sd_volume.open_root_dir().unwrap();
             let mut file = ShortFileName::this_dir();
 
-            cx.shared.display_manager.lock(|dm| {
+            cx.shared.state_manager.lock(|dm| {
                 let (_file, path) = dm.state.dir_path.split_last().expect("path is provided");
                 file = _file.clone();
                 for dir_name in path {
@@ -493,7 +482,7 @@ mod app {
                 }
             });
 
-            let mut get_running = || cx.shared.display_manager.lock(|dm| dm.state.running);
+            let mut get_running = || cx.shared.state_manager.lock(|dm| dm.state.running);
 
             while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
                 let logs = CanLogsInterator::new(
@@ -514,15 +503,13 @@ mod app {
             }
         });
 
-        cx.shared
-            .display_manager
-            .lock(|dm| dm.state.running = false);
+        cx.shared.state_manager.lock(|dm| dm.state.running = false);
         state_updater::spawn().expect("could not update state");
     }
 
     #[task(
         priority = 1,
-        shared = [volume_manager, display_manager],
+        shared = [volume_manager, state_manager],
         local = [can_rx_consumer],
     )]
     async fn sd_writer(mut cx: sd_writer::Context) {
@@ -532,7 +519,7 @@ mod app {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut dir = sd_volume.open_root_dir().unwrap();
 
-            cx.shared.display_manager.lock(|dm| {
+            cx.shared.state_manager.lock(|dm| {
                 for dir_name in &dm.state.dir_path {
                     dir.change_dir(dir_name).unwrap();
                 }
@@ -548,7 +535,7 @@ mod app {
 
             rprintln!("Writing started to '{}'", file_name);
 
-            while cx.shared.display_manager.lock(|dm| dm.state.running) {
+            while cx.shared.state_manager.lock(|dm| dm.state.running) {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
