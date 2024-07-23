@@ -129,6 +129,7 @@ mod app {
         blinker::spawn().unwrap();
 
         // Init Display
+        rprintln!("-> Display");
         let display_i2c = BlockingI2c::i2c1(
             cx.device.I2C1,
             (
@@ -149,7 +150,7 @@ mod app {
         let interface = I2CDisplayInterface::new(display_i2c);
         let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
             .into_buffered_graphics_mode();
-        display.init().unwrap();
+        while let Err(_) = display.init() {}
 
         // Init DisplayManager
         let mut display_manager = DisplayManager::default_with_display(display);
