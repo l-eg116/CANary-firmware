@@ -133,11 +133,9 @@ fn draw_left_hint(display: &mut Display, hint: &str) {
         CornerRadii::new(Size::new_equal(4)),
     );
 
-    let _ = Text::with_text_style(
-        "<",
-        Point::new(0, (DISPLAY_HEIGHT - 1) as i32),
-        DEFAULT_TEXT_STYLE,
-        LEFT_BOTTOM,
+    let _ = Image::new(
+        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp")).unwrap(),
+        Point::new(0, DISPLAY_HEIGHT as i32 - 12),
     )
     .draw(display);
     let _ = text_hint.draw(display);
@@ -158,11 +156,9 @@ fn draw_right_hint(display: &mut Display, hint: &str) {
         CornerRadii::new(Size::new_equal(4)),
     );
 
-    let _ = Text::with_text_style(
-        ">",
-        Point::new((DISPLAY_WIDTH - 1) as i32, (DISPLAY_HEIGHT - 1) as i32),
-        DEFAULT_TEXT_STYLE,
-        RIGHT_BOTTOM,
+    let _ = Image::new(
+        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp")).unwrap(),
+        Point::new(DISPLAY_WIDTH as i32 - 7, DISPLAY_HEIGHT as i32 - 12),
     )
     .draw(display);
     let _ = text_hint.draw(display);
@@ -186,11 +182,12 @@ fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
         CornerRadii::new(Size::new_equal(4)),
     );
 
-    let _ = Text::with_text_style(
-        "@",
-        text_hint.bounding_box().top_left - Point::new(1, 0),
-        DEFAULT_TEXT_STYLE,
-        RIGHT_TOP,
+    let _ = Image::new(
+        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/ok.bmp")).unwrap(),
+        Point::new(
+            text_hint.bounding_box().top_left.x - 7,
+            DISPLAY_HEIGHT as i32 - 12,
+        ),
     )
     .draw(display);
     let _ = text_hint.draw(display);
