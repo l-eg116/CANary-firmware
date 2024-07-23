@@ -250,8 +250,10 @@ pub fn draw_file_selection(
 ) {
     let file_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/file.bmp")).unwrap();
     let dir_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/directory.bmp")).unwrap();
-    let chevron_icon =
+    let selected_icon =
         Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevron_right.bmp")).unwrap();
+    let scroll_icon =
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp")).unwrap();
 
     let mut dir_str = String::<16>::new();
     if let Some(current_dir) = current_dir {
@@ -279,6 +281,13 @@ pub fn draw_file_selection(
     if content.len() == 0 {
         return;
     }
+    if content.len() > 3 {
+        let _ = Image::new(
+            &scroll_icon,
+            Point::new(DISPLAY_WIDTH as i32 - 12, TEXT_LINE_3 - 11),
+        )
+        .draw(display);
+    }
 
     let (content, highlighted_i) = match selected_index {
         0 => (&content[0..=2.min(content.len() - 1)], 0),
@@ -290,7 +299,7 @@ pub fn draw_file_selection(
     for (i, (is_dir, name)) in content.iter().enumerate() {
         let _ = Image::new(
             if i == highlighted_i as usize {
-                &chevron_icon
+                &selected_icon
             } else if *is_dir {
                 &dir_icon
             } else {
