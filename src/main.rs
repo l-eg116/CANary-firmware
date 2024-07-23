@@ -11,7 +11,6 @@ mod display;
 mod screen;
 mod sd;
 mod spi;
-mod status;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2, TIM3, TIM4])]
 mod app {
@@ -37,7 +36,7 @@ mod app {
         spi::{Mode, Phase, Polarity, Spi},
     };
 
-    use crate::{buttons::*, can::*, display::*, sd::*, spi::*, status::*};
+    use crate::{buttons::*, can::*, display::*, sd::*, spi::*};
 
     pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
@@ -55,7 +54,6 @@ mod app {
         can: CanContext,
         #[lock_free]
         button_panel: ButtonPanel,
-        status: CanaryStatus,
         volume_manager: VolumeManager,
         display_manager: DisplayManager,
     }
@@ -126,7 +124,6 @@ mod app {
         // Init status LED
         rprintln!("-> LED");
         let status_led = gpioc.pc15.into_push_pull_output(&mut gpioc.crh);
-        let status = CanaryStatus::Idle;
         blinker::spawn().unwrap();
 
         // Init Display
@@ -192,7 +189,6 @@ mod app {
             Shared {
                 can,
                 button_panel,
-                status,
                 volume_manager,
                 display_manager,
             },
@@ -209,31 +205,24 @@ mod app {
     #[idle]
     fn idle(_: idle::Context) -> ! {
         rprintln!("Entering idle loop");
-        loop {
-            // asm::wfi();
-        }
+        loop {}
     }
 
     #[task(
-        priority = 1,
-        shared = [status],
+        priority = 2,
+        shared = [display_manager],
         local = [status_led],
     )]
     async fn blinker(mut cx: blinker::Context) {
         loop {
-            Mono::delay(cx.shared.status.lock(|status| match status {
-                CanaryStatus::Idle => 500.millis(),
-                CanaryStatus::Active => 100.millis(),
-                CanaryStatus::InfoBlink(0) => {
-                    *status = CanaryStatus::Idle;
-                    10.millis()
+            let delay = cx.shared.display_manager.lock(|dm| {
+                if dm.state.running {
+                    100.millis()
+                } else {
+                    500.millis()
                 }
-                CanaryStatus::InfoBlink(n) => {
-                    *status = CanaryStatus::InfoBlink(*n - 1);
-                    10.millis()
-                }
-            }))
-            .await;
+            });
+            Mono::delay(delay).await; // TODO : fix blinky stopping on sd_reader/writer
 
             cx.local.status_led.toggle();
         }
@@ -478,7 +467,7 @@ mod app {
     }
 
     #[task(
-        priority = 2,
+        priority = 1,
         shared = [volume_manager, display_manager],
         local = [can_tx_producer],
     )]
