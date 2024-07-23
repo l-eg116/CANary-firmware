@@ -193,9 +193,15 @@ impl Screen {
                     }
                 },
                 Button::Left => {
-                    state.clear_sd_index();
-                    *self = Self::Home {
-                        selected_item: HomeItem::Emit,
+                    if state.dir_path.is_empty() {
+                        state.clear_sd_index();
+                        *self = Self::Home {
+                            selected_item: HomeItem::Emit,
+                        }
+                    } else {
+                        state.dir_path.pop();
+                        *selected_index = 0;
+                        state.running = true;
                     }
                 }
             },
@@ -278,9 +284,15 @@ impl Screen {
                     (false, _) => unreachable!(),
                 },
                 Button::Left => {
-                    state.clear_sd_index();
-                    *self = Self::Home {
-                        selected_item: HomeItem::Emit,
+                    if state.dir_path.is_empty() {
+                        state.clear_sd_index();
+                        *self = Self::Home {
+                            selected_item: HomeItem::Capture,
+                        }
+                    } else {
+                        state.dir_path.pop();
+                        *selected_index = 0;
+                        state.running = true;
                     }
                 }
             },
