@@ -437,3 +437,91 @@ pub fn draw_emission(
     )
     .draw(display);
 }
+
+pub fn draw_capture(
+    display: &mut Display,
+    selected: Option<&ShortFileName>,
+    running: bool,
+    bitrate: &Bitrate,
+    silent: bool,
+    success_count: u32,
+) {
+    let capture_icon =
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp")).unwrap();
+    let scroll_icon =
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp")).unwrap();
+    let play_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/play.bmp")).unwrap();
+    let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp")).unwrap();
+    let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
+
+    let selected: String<16> = if let Some(selected) = selected {
+        formatted_string::<16>(format_args!("{}", selected), true).unwrap()
+    } else {
+        String::from_str("root").unwrap()
+    };
+    draw_header(&selected, false, display);
+    let _ = Image::new(&capture_icon, Point::zero()).draw(display);
+
+    if running {
+        draw_center_hint(display, "Stop", -4);
+    } else {
+        draw_left_hint(display, "Exit");
+        draw_center_hint(display, "Start", -7);
+        draw_right_hint(display, "Silent");
+    }
+
+    let bitrate_str: String<20> = formatted_string(
+        format_args!("Bitrate:\n   {:4}kbps", *bitrate as u32 / 1000),
+        false,
+    )
+    .unwrap();
+    let silent_str: String<13> =
+        formatted_string(format_args!("Silent: {:}", silent), false).unwrap();
+
+    let _ = Image::new(&scroll_icon, Point::new(5 * 11 - 2, TEXT_LINE_2 - 3)).draw(display);
+    let _ = Text::with_text_style(
+        &bitrate_str,
+        Point::new(0, TEXT_LINE_2),
+        SMALL_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+    let _ = Text::with_text_style(
+        &silent_str,
+        Point::new(0, TEXT_LINE_3 + 5),
+        SMALL_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+
+    let _ = Image::new(
+        if running {
+            &pause_icon
+        } else if success_count == 0 {
+            &play_icon
+        } else {
+            &stop_icon
+        },
+        Point::new(DISPLAY_WIDTH as i32 - 16 - 16, 18),
+    )
+    .draw(display);
+
+    let state_str: String<16> = if running {
+        String::from_str("Listening").unwrap()
+    } else if success_count == 0 {
+        String::from_str("Standby").unwrap()
+    } else {
+        formatted_string(
+            format_args!("Saved {}\nframes", success_count % 10000),
+            false,
+        )
+        .unwrap()
+    };
+    let _ = Text::with_text_style(
+        &state_str,
+        Point::new(DISPLAY_WIDTH as i32 - 16 / 2 - 16, TEXT_LINE_3 + 4),
+        SMALL_TEXT_STYLE,
+        CENTER_BOTTOM,
+    )
+    .draw(display);
+}

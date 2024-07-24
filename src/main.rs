@@ -425,7 +425,7 @@ mod app {
                     },
                 ) => {
                     can.enable_rx(*bitrate, *capture_silent);
-                    sd_writer::spawn().expect("sd_writer isn't running");
+                    let _ = sd_writer::spawn(); // Can already be spawed in case of ignored button
                 }
                 (Screen::Emission | Screen::Capture, State { running: false, .. }) => {
                     can.disable();
@@ -521,7 +521,6 @@ mod app {
     )]
     async fn sd_writer(mut cx: sd_writer::Context) {
         let rx_queue = cx.local.can_rx_consumer;
-        let mut success_count: u32 = 0;
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
@@ -549,16 +548,15 @@ mod app {
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
                         rprintln!("Got error on writing ");
                     } else {
-                        success_count += 1;
+                        cx.shared
+                            .state_manager
+                            .lock(|dm| dm.state.success_count += 1);
                     };
                 }
             }
         });
 
         while let Some(_) = rx_queue.dequeue() {} // Empty Queue for next time
-        cx.shared
-            .state_manager
-            .lock(|dm| dm.state.success_count = success_count);
         rprintln!("Writing stopped");
     }
 }

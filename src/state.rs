@@ -62,6 +62,14 @@ impl StateManager {
                 &self.state.emission_mode,
                 self.state.success_count,
             ),
+            Screen::Capture => draw_capture(
+                &mut self.display,
+                self.state.dir_path.last(),
+                self.state.running,
+                &self.state.bitrate,
+                self.state.capture_silent,
+                self.state.success_count,
+            ),
             _ => {
                 Text::new(
                     &txt,
@@ -311,7 +319,12 @@ impl Screen {
                 }
             },
             Self::Capture => match (button, state.running) {
-                (Button::Ok, _) => state.running = !state.running,
+                (Button::Ok, _) => {
+                    state.running = !state.running;
+                    if state.running {
+                        state.success_count = 0
+                    }
+                }
                 (Button::Up, false) => state.bitrate.increment(),
                 (Button::Down, false) => state.bitrate.decrement(),
                 (Button::Right, false) => state.capture_silent = !state.capture_silent,
