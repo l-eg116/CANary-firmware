@@ -114,7 +114,7 @@ impl Bitrate {
 
     pub fn increment(&mut self) {
         match self {
-            Self::Br1000kbps => *self = Self::Br10kbps,
+            Self::Br1000kbps => *self = Self::Br1000kbps,
             Self::Br800kbps => *self = Self::Br1000kbps,
             Self::Br500kbps => *self = Self::Br800kbps,
             Self::Br250kbps => *self = Self::Br500kbps,
@@ -138,7 +138,7 @@ impl Bitrate {
             Self::Br83kbps => *self = Self::Br50kbps,
             Self::Br50kbps => *self = Self::Br20kbps,
             Self::Br20kbps => *self = Self::Br10kbps,
-            Self::Br10kbps => *self = Self::Br1000kbps,
+            Self::Br10kbps => *self = Self::Br10kbps,
         }
     }
 }
