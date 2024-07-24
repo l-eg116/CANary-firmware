@@ -1,4 +1,7 @@
-use core::{fmt::Write, str::FromStr};
+use core::{
+    fmt::{Arguments, Write},
+    str::FromStr,
+};
 
 use embedded_graphics::{
     geometry::AnchorX,
@@ -115,7 +118,31 @@ static BUTTON_STROKE_SELECTED: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuild
     .stroke_alignment(StrokeAlignment::Inside)
     .build();
 
-fn draw_whole_line(text: Text<MonoTextStyle<BinaryColor>>, display: &mut Display) {
+fn formatted_string<const N: usize>(
+    args: Arguments<'_>,
+    make_lowercase: bool,
+) -> Result<String<N>, core::fmt::Error> {
+    let mut string = String::new();
+
+    string.write_fmt(args)?;
+    if make_lowercase {
+        string.make_ascii_lowercase()
+    }
+
+    Ok(string)
+}
+
+fn draw_header(header: &str, is_title: bool, display: &mut Display) {
+    let text = Text::with_text_style(
+        header,
+        Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
+        if is_title {
+            TITLE_TEXT_STYLE
+        } else {
+            HEADER_TEXT_STYLE
+        },
+        CENTER_BOTTOM,
+    );
     let _ = text
         .bounding_box()
         .resized_width(DISPLAY_WIDTH + 2, AnchorX::Center)
@@ -206,15 +233,7 @@ pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
     let mut title = String::<16>::from_str("CANary v").unwrap();
     title.push_str(env!("CARGO_PKG_VERSION")).unwrap();
 
-    draw_whole_line(
-        Text::with_text_style(
-            &title,
-            Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
-            TITLE_TEXT_STYLE,
-            CENTER_BOTTOM,
-        ),
-        display,
-    );
+    draw_header(&title, true, display);
 
     let emit_button_pos = Point::new((DISPLAY_WIDTH / 4) as i32, 37);
     let capt_button_pos = Point::new((DISPLAY_WIDTH / 4 * 3) as i32, 37);
@@ -269,15 +288,7 @@ pub fn draw_file_selection(
     } else {
         dir_str.push_str("root").unwrap();
     }
-    draw_whole_line(
-        Text::with_text_style(
-            &dir_str,
-            Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
-            HEADER_TEXT_STYLE,
-            CENTER_BOTTOM,
-        ),
-        display,
-    );
+    draw_header(&dir_str, false, display);
 
     draw_left_hint(display, "back");
     draw_center_hint(display, "select", -4);
@@ -314,11 +325,7 @@ pub fn draw_file_selection(
         )
         .draw(display);
 
-        let mut name_str = String::<16>::new();
-        name_str
-            .write_fmt(format_args!("{}", name))
-            .expect("ShortFileNames.len() <= 12");
-        name_str.make_ascii_lowercase();
+        let name_str = formatted_string::<16>(format_args!("{}", name), true).unwrap();
         let _ = Text::with_text_style(
             &name_str,
             Point::new(13, TEXT_LINE_2 + 13 * i as i32),
@@ -349,18 +356,9 @@ pub fn draw_emission(
     let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp")).unwrap();
     let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
 
-    let mut file_str = String::<16>::new();
-    file_str
-        .write_fmt(format_args!("{}", selected))
-        .expect("ShortFileName.len() <= 12");
-    file_str.make_ascii_lowercase();
-    draw_whole_line(
-        Text::with_text_style(
-            &file_str,
-            Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
-            HEADER_TEXT_STYLE,
-            CENTER_BOTTOM,
-        ),
+    draw_header(
+        &formatted_string::<16>(format_args!("{}", selected), true).unwrap(),
+        false,
         display,
     );
     let _ = Image::new(&emit_icon, Point::zero()).draw(display);
@@ -373,22 +371,17 @@ pub fn draw_emission(
         draw_right_hint(display, "Params");
     }
 
-    let mut count_str = String::<14>::new();
-    if count == 0 {
-        count_str.push_str("Repeating xINF").unwrap();
+    let count_str: String<14> = if count == 0 {
+        String::from_str("Repeating xINF").unwrap()
     } else {
-        count_str
-            .write_fmt(format_args!("Repeating x{:->3}", count))
-            .unwrap();
-    }
-    let mut bitrate_str = String::<17>::new();
-    bitrate_str
-        .write_fmt(format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000))
-        .unwrap();
-    let mut mode_str = String::<15>::new();
-    mode_str
-        .write_fmt(format_args!("Mode: {:?}", mode))
-        .unwrap();
+        formatted_string(format_args!("Repeating x{:->3}", count), false).unwrap()
+    };
+    let bitrate_str: String<17> = formatted_string(
+        format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000),
+        false,
+    )
+    .unwrap();
+    let mode_str: String<15> = formatted_string(format_args!("Mode: {:?}", mode), false).unwrap();
 
     let _ = Image::new(&scroll_icon, Point::new(5 * 14 - 2, TEXT_LINE_2 - 10)).draw(display);
     let _ = Text::with_text_style(
@@ -425,18 +418,19 @@ pub fn draw_emission(
     )
     .draw(display);
 
-    let mut success_str = String::<16>::new();
+    let state_str: String<16> = if running {
+        String::from_str("Running").unwrap()
+    } else if success_count == 0 {
+        String::from_str("Standby").unwrap()
+    } else {
+        formatted_string(
+            format_args!("Sent {}\nframes", success_count % 10000),
+            false,
+        )
+        .unwrap()
+    };
     let _ = Text::with_text_style(
-        if running {
-            "Running"
-        } else if success_count == 0 {
-            "Standby"
-        } else {
-            success_str
-                .write_fmt(format_args!("Sent {}\nframes", success_count % 10000))
-                .unwrap();
-            &success_str
-        },
+        &state_str,
         Point::new(DISPLAY_WIDTH as i32 - 16 / 2 - 12, TEXT_LINE_3 + 4),
         SMALL_TEXT_STYLE,
         CENTER_BOTTOM,
