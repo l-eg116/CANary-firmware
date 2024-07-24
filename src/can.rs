@@ -59,7 +59,10 @@ impl CanContext {
     pub fn disable(&mut self) {
         self.bus.disable_interrupts(
             bxcan::Interrupts::FIFO0_MESSAGE_PENDING | bxcan::Interrupts::TRANSMIT_MAILBOX_EMPTY,
-        )
+        );
+        self.bus.abort(bxcan::Mailbox::Mailbox0);
+        self.bus.abort(bxcan::Mailbox::Mailbox1);
+        self.bus.abort(bxcan::Mailbox::Mailbox2);
     }
 }
 
