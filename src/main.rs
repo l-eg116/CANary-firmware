@@ -429,6 +429,7 @@ mod app {
                 }
                 (Screen::Emission | Screen::Capture, State { running: false, .. }) => {
                     can.disable();
+                    dm.render();
                 }
                 _ => {}
             }

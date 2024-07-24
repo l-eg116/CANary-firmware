@@ -4,7 +4,7 @@ use embedded_graphics::{
     geometry::AnchorX,
     image::Image,
     mono_font::{
-        ascii::{FONT_6X12, FONT_6X13_BOLD},
+        ascii::{FONT_5X7, FONT_6X12, FONT_6X13_BOLD},
         MonoTextStyle, MonoTextStyleBuilder,
     },
     pixelcolor::BinaryColor,
@@ -27,7 +27,10 @@ use stm32f1xx_hal::{
 };
 use tinybmp::Bmp;
 
-use crate::state::HomeItem;
+use crate::{
+    can::{Bitrate, EmissionMode},
+    state::HomeItem,
+};
 
 pub type Display = Ssd1306<
     I2CInterface<
@@ -73,6 +76,11 @@ static HEADER_TEXT_STYLE: MonoTextStyle<BinaryColor> = MonoTextStyleBuilder::new
     .font(&FONT_6X12)
     .text_color(BinaryColor::Off)
     .background_color(BinaryColor::On)
+    .build();
+static SMALL_TEXT_STYLE: MonoTextStyle<BinaryColor> = MonoTextStyleBuilder::new()
+    .font(&FONT_5X7)
+    .text_color(BinaryColor::On)
+    .background_color(BinaryColor::Off)
     .build();
 
 static CENTER_MIDDLE: TextStyle = TextStyleBuilder::new()
@@ -323,4 +331,115 @@ pub fn draw_file_selection(
         )
         .draw(display);
     }
+}
+
+pub fn draw_emission(
+    display: &mut Display,
+    selected: &ShortFileName,
+    running: bool,
+    count: u8,
+    bitrate: &Bitrate,
+    mode: &EmissionMode,
+    success_count: u32,
+) {
+    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp")).unwrap();
+    let scroll_icon =
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp")).unwrap();
+    let play_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/play.bmp")).unwrap();
+    let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp")).unwrap();
+    let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
+
+    let mut file_str = String::<16>::new();
+    file_str
+        .write_fmt(format_args!("{}", selected))
+        .expect("ShortFileName.len() <= 12");
+    file_str.make_ascii_lowercase();
+    draw_whole_line(
+        Text::with_text_style(
+            &file_str,
+            Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
+            HEADER_TEXT_STYLE,
+            CENTER_BOTTOM,
+        ),
+        display,
+    );
+    let _ = Image::new(&emit_icon, Point::zero()).draw(display);
+
+    if running {
+        draw_center_hint(display, "Stop", -4);
+    } else {
+        draw_left_hint(display, "Exit");
+        draw_center_hint(display, "Start", -7);
+        draw_right_hint(display, "Params");
+    }
+
+    let mut count_str = String::<14>::new();
+    if count == 0 {
+        count_str.push_str("Repeating xINF").unwrap();
+    } else {
+        count_str
+            .write_fmt(format_args!("Repeating x{:->3}", count))
+            .unwrap();
+    }
+    let mut bitrate_str = String::<17>::new();
+    bitrate_str
+        .write_fmt(format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000))
+        .unwrap();
+    let mut mode_str = String::<15>::new();
+    mode_str
+        .write_fmt(format_args!("Mode: {:?}", mode))
+        .unwrap();
+
+    let _ = Image::new(&scroll_icon, Point::new(5 * 14 - 2, TEXT_LINE_2 - 10)).draw(display);
+    let _ = Text::with_text_style(
+        &count_str,
+        Point::new(0, TEXT_LINE_2),
+        SMALL_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+    let _ = Text::with_text_style(
+        &bitrate_str,
+        Point::new(0, TEXT_LINE_3),
+        SMALL_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+    let _ = Text::with_text_style(
+        &mode_str,
+        Point::new(0, TEXT_LINE_3 + 8),
+        SMALL_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+
+    let _ = Image::new(
+        if running {
+            &pause_icon
+        } else if success_count == 0 {
+            &play_icon
+        } else {
+            &stop_icon
+        },
+        Point::new(DISPLAY_WIDTH as i32 - 16 - 12, 18),
+    )
+    .draw(display);
+
+    let mut success_str = String::<16>::new();
+    let _ = Text::with_text_style(
+        if running {
+            "Running"
+        } else if success_count == 0 {
+            "Standby"
+        } else {
+            success_str
+                .write_fmt(format_args!("Sent {}\nframes", success_count % 10000))
+                .unwrap();
+            &success_str
+        },
+        Point::new(DISPLAY_WIDTH as i32 - 16 / 2 - 12, TEXT_LINE_3 + 4),
+        SMALL_TEXT_STYLE,
+        CENTER_BOTTOM,
+    )
+    .draw(display);
 }

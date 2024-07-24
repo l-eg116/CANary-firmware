@@ -53,6 +53,15 @@ impl StateManager {
                 },
                 *selected_index,
             ),
+            Screen::Emission => draw_emission(
+                &mut self.display,
+                self.state.dir_path.last().expect("a file was selected"),
+                self.state.running,
+                self.state.emission_count,
+                &self.state.bitrate,
+                &self.state.emission_mode,
+                self.state.success_count,
+            ),
             _ => {
                 Text::new(
                     &txt,
