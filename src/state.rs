@@ -194,7 +194,7 @@ impl Screen {
                 },
                 Button::Left => {
                     if state.dir_path.is_empty() {
-                        state.clear_sd_index();
+                        state.soft_reset();
                         *self = Self::Home {
                             selected_item: HomeItem::Emit,
                         }
@@ -206,7 +206,12 @@ impl Screen {
                 }
             },
             Self::Emission => match (button, state.running) {
-                (Button::Ok, _) => state.running = !state.running,
+                (Button::Ok, _) => {
+                    state.running = !state.running;
+                    if state.running {
+                        state.success_count = 0
+                    }
+                }
                 (Button::Up, false) => {
                     state.emission_count = state.emission_count.saturating_add(1)
                 }
@@ -217,7 +222,7 @@ impl Screen {
                     *self = Self::default_variant(ScreenVariant::EmissionSettings)
                 }
                 (Button::Left, false) => {
-                    state.clear_sd_index();
+                    state.soft_reset();
                     *self = Self::Home {
                         selected_item: HomeItem::Emit,
                     }
@@ -285,7 +290,7 @@ impl Screen {
                 },
                 Button::Left => {
                     if state.dir_path.is_empty() {
-                        state.clear_sd_index();
+                        state.soft_reset();
                         *self = Self::Home {
                             selected_item: HomeItem::Capture,
                         }
@@ -302,7 +307,7 @@ impl Screen {
                 (Button::Down, false) => state.bitrate.decrement(),
                 (Button::Right, false) => state.capture_silent = !state.capture_silent,
                 (Button::Left, false) => {
-                    state.clear_sd_index();
+                    state.soft_reset();
                     *self = Self::Home {
                         selected_item: HomeItem::Capture,
                     }
@@ -320,6 +325,7 @@ pub struct State {
     pub emission_count: u8,
     pub capture_silent: bool,
     pub running: bool,
+    pub success_count: u32,
     pub dir_path: Vec<ShortFileName, MAX_SD_INDEX_DEPTH>,
     pub dir_content: Vec<(bool, ShortFileName), MAX_SD_INDEX_AMOUNT>,
 }
@@ -332,12 +338,15 @@ impl State {
             emission_count: 1,
             capture_silent: false,
             running: false,
+            success_count: 0,
             dir_path: Vec::new(),
             dir_content: Vec::new(),
         }
     }
 
-    pub fn clear_sd_index(&mut self) {
+    pub fn soft_reset(&mut self) {
+        self.emission_count = 1;
+        self.success_count = 0;
         self.dir_path = Vec::new();
         self.dir_content = Vec::new();
     }

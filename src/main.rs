@@ -231,10 +231,10 @@ mod app {
     #[task(
         binds = USB_HP_CAN_TX,
         priority = 4,
-        shared = [can],
+        shared = [can, state_manager],
         local = [can_tx_consumer]
     )]
-    fn can_sender(cx: can_sender::Context) {
+    fn can_sender(mut cx: can_sender::Context) {
         let mut can = cx.shared.can;
         let tx_queue = cx.local.can_tx_consumer;
 
@@ -252,6 +252,9 @@ mod app {
                                 None,
                                 "All mailboxes should have been empty"
                             );
+                            cx.shared
+                                .state_manager
+                                .lock(|sm| sm.state.success_count += 1);
                         }
                         Err(nb::Error::WouldBlock) => break,
                         Err(_) => unreachable!(),
@@ -501,8 +504,11 @@ mod app {
                     *n -= 1;
                 }
             }
+
+            while tx_queue.len() != 0 && get_running() {}
         });
 
+        // TODO : fix bug where old frames stay stuck in the queue
         cx.shared.state_manager.lock(|dm| dm.state.running = false);
         state_updater::spawn().expect("could not update state");
     }
@@ -514,6 +520,7 @@ mod app {
     )]
     async fn sd_writer(mut cx: sd_writer::Context) {
         let rx_queue = cx.local.can_rx_consumer;
+        let mut success_count: u32 = 0;
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
@@ -540,11 +547,17 @@ mod app {
                     rprintln!("Writing {:?}", frame);
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
                         rprintln!("Got error on writing ");
+                    } else {
+                        success_count += 1;
                     };
                 }
             }
         });
+
         while let Some(_) = rx_queue.dequeue() {} // Empty Queue for next time
+        cx.shared
+            .state_manager
+            .lock(|dm| dm.state.success_count = success_count);
         rprintln!("Writing stopped");
     }
 }
