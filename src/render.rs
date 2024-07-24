@@ -32,7 +32,7 @@ use tinybmp::Bmp;
 
 use crate::{
     can::{Bitrate, EmissionMode},
-    state::HomeItem,
+    state::{EmissionSettingsItems, HomeItem},
 };
 
 pub type Display = Ssd1306<
@@ -524,4 +524,74 @@ pub fn draw_capture(
         CENTER_BOTTOM,
     )
     .draw(display);
+}
+
+pub fn draw_emission_settings(
+    display: &mut Display,
+    selected_item: &EmissionSettingsItems,
+    bitrate: &Bitrate,
+    mode: &EmissionMode,
+) {
+    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp")).unwrap();
+    let right_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp")).unwrap();
+    let left_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp")).unwrap();
+
+    draw_header("Emission Settings", false, display);
+    draw_center_hint(display, "Save", 0);
+    let _ = Image::new(&emit_icon, Point::zero()).draw(display);
+
+    let val_center = DISPLAY_WIDTH as i32 - 5 * 6 - 5;
+
+    let _ = Text::with_text_style(
+        "Bitrate:",
+        Point::new(1, TEXT_LINE_2),
+        DEFAULT_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+    let _ = Text::with_text_style(
+        &formatted_string::<9>(format_args!("{}kbps", *bitrate as u32 / 1000), false).unwrap(),
+        Point::new(val_center, TEXT_LINE_2),
+        DEFAULT_TEXT_STYLE,
+        CENTER_BOTTOM,
+    )
+    .draw(display);
+
+    let _ = Text::with_text_style(
+        "Mode:",
+        Point::new(1, TEXT_LINE_3),
+        DEFAULT_TEXT_STYLE,
+        LEFT_BOTTOM,
+    )
+    .draw(display);
+    let _ = Text::with_text_style(
+        &formatted_string::<9>(format_args!("{:?}", mode), false).unwrap(),
+        Point::new(val_center, TEXT_LINE_3),
+        DEFAULT_TEXT_STYLE,
+        CENTER_BOTTOM,
+    )
+    .draw(display);
+
+    let selected_row = match selected_item {
+        EmissionSettingsItems::Bitrate => TEXT_LINE_2,
+        EmissionSettingsItems::Mode => TEXT_LINE_3,
+    };
+    let _ = Image::new(
+        &left_icon,
+        Point::new(val_center - 6 * 5 - 2, selected_row - 11),
+    )
+    .draw(display);
+    let _ = Image::new(
+        &right_icon,
+        Point::new(val_center + 6 * 4 + 4, selected_row - 11),
+    )
+    .draw(display);
+    let _ = RoundedRectangle::with_equal_corners(
+        Rectangle::with_center(
+            Point::new(val_center, selected_row - 6),
+            Size::new(6 * 11 + 2, 12),
+        ),
+        Size::new_equal(4),
+    )
+    .draw_styled(&BUTTON_STROKE, display);
 }

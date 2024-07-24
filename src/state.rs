@@ -1,12 +1,5 @@
 use core::fmt::{Debug, Write};
 
-use embedded_graphics::{
-    geometry::Point,
-    mono_font::{ascii::FONT_6X10, MonoTextStyle},
-    pixelcolor::BinaryColor,
-    text::Text,
-    Drawable,
-};
 use embedded_sdmmc::ShortFileName;
 use heapless::{String, Vec};
 use rtt_target::rprintln;
@@ -70,15 +63,12 @@ impl StateManager {
                 self.state.capture_silent,
                 self.state.success_count,
             ),
-            _ => {
-                Text::new(
-                    &txt,
-                    Point::new(0, 6),
-                    MonoTextStyle::new(&FONT_6X10, BinaryColor::On),
-                )
-                .draw(&mut self.display)
-                .unwrap();
-            }
+            Screen::EmissionSettings { selected_item } => draw_emission_settings(
+                &mut self.display,
+                selected_item,
+                &self.state.bitrate,
+                &self.state.emission_mode,
+            ),
         }
         self.display.flush().unwrap();
 
