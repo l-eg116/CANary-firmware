@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![doc = include_str!("../README.md")]
 
 use panic_rtt_target as _;
 use rtic::app;
