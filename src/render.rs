@@ -230,8 +230,12 @@ fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
 }
 
 pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
-    let mut title = String::<16>::from_str("CANary v").unwrap();
-    title.push_str(env!("CARGO_PKG_VERSION")).unwrap();
+    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp")).unwrap();
+    let capture_icon =
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp")).unwrap();
+
+    let title: String<16> =
+        formatted_string(format_args!("CANary v{}", env!("CARGO_PKG_VERSION")), false).unwrap();
 
     draw_header(&title, true, display);
 
@@ -254,16 +258,28 @@ pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
         CornerRadii::new(Size::new_equal(8)),
     )
     .draw_styled(emit_styles.0, display);
-    let _ =
-        Text::with_text_style("Emit", emit_button_pos, emit_styles.1, CENTER_MIDDLE).draw(display);
+    let _ = Text::with_text_style(
+        "Emit",
+        emit_button_pos + Point::new(0, 6),
+        emit_styles.1,
+        CENTER_MIDDLE,
+    )
+    .draw(display);
+    let _ = Image::with_center(&emit_icon, emit_button_pos - Point::new(0, 6)).draw(display);
 
     let _ = RoundedRectangle::new(
         Rectangle::with_center(capt_button_pos, home_button_size),
         CornerRadii::new(Size::new_equal(8)),
     )
     .draw_styled(capt_styles.0, display);
-    let _ = Text::with_text_style("Capture", capt_button_pos, capt_styles.1, CENTER_MIDDLE)
-        .draw(display);
+    let _ = Text::with_text_style(
+        "Capture",
+        capt_button_pos + Point::new(0, 6),
+        capt_styles.1,
+        CENTER_MIDDLE,
+    )
+    .draw(display);
+    let _ = Image::with_center(&capture_icon, capt_button_pos - Point::new(0, 6)).draw(display);
 }
 
 pub fn draw_file_selection(
