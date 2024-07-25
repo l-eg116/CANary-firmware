@@ -52,12 +52,12 @@ pub type Display = Ssd1306<
 const DISPLAY_WIDTH: u32 = 128;
 const DISPLAY_HEIGHT: u32 = 64;
 
-const TEXT_HEIGHT: i32 = 12;
-const TEXT_LINE_1: i32 = 1 * 12 - 1;
-const TEXT_LINE_2: i32 = 2 * 12 + 0;
-const TEXT_LINE_3: i32 = 3 * 12 + 1;
-const TEXT_LINE_4: i32 = 4 * 12 + 2;
-const TEXT_LINE_5: i32 = 5 * 12 + 3;
+pub const TEXT_HEIGHT: i32 = 12;
+pub const TEXT_LINE_1: i32 = 1 * 12 - 1;
+pub const TEXT_LINE_2: i32 = 2 * 12 + 0;
+pub const TEXT_LINE_3: i32 = 3 * 12 + 1;
+pub const TEXT_LINE_4: i32 = 4 * 12 + 2;
+pub const TEXT_LINE_5: i32 = 5 * 12 + 3;
 
 static DEFAULT_TEXT_STYLE: MonoTextStyle<BinaryColor> = MonoTextStyleBuilder::new()
     .font(&FONT_6X12)
@@ -151,6 +151,12 @@ pub fn draw_header(display: &mut Display, header: &str, is_title: bool) {
         ))
         .draw(display);
     let _ = text.draw(display);
+}
+
+pub fn flush_text_line(display: &mut Display, text: &str, line: i32) {
+    let _ = Text::with_text_style(text, Point::new(0, line), DEFAULT_TEXT_STYLE, LEFT_BOTTOM)
+        .draw(display);
+    let _ = display.flush();
 }
 
 fn draw_left_hint(display: &mut Display, hint: &str) {

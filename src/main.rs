@@ -36,7 +36,17 @@ mod app {
         spi::{Mode, Phase, Polarity, Spi},
     };
 
-    use crate::{buttons::*, can::*, sd::*, spi::*, state::*};
+    use crate::{
+        buttons::*,
+        can::*,
+        render::{
+            draw_header, flush_text_line, TEXT_LINE_1, TEXT_LINE_2, TEXT_LINE_3, TEXT_LINE_4,
+            TEXT_LINE_5,
+        },
+        sd::*,
+        spi::*,
+        state::*,
+    };
 
     pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
@@ -96,36 +106,6 @@ mod app {
         let mut gpioc = cx.device.GPIOC.split();
         let mut afio = cx.device.AFIO.constrain();
 
-        // Init CAN bus
-        rprintln!("-> CAN bus");
-        let can = CanContext::new(
-            Can::new(cx.device.CAN1, cx.device.USB),
-            gpiob.pb8.into_floating_input(&mut gpiob.crh), // can rx
-            gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh), // can tx
-            &mut afio.mapr,
-        );
-
-        // Init CAN TX & RX queues
-        let (can_tx_producer, can_tx_consumer) = cx.local.q_tx.split();
-        let (can_rx_producer, can_rx_consumer) = cx.local.q_rx.split();
-
-        // Init buttons
-        rprintln!("-> Buttons");
-        let (_pa15, _pb3, pb4) = afio.mapr.disable_jtag(gpioa.pa15, gpiob.pb3, gpiob.pb4);
-        let mut button_panel = ButtonPanel {
-            button_ok: pb4.into_pull_up_input(&mut gpiob.crl),
-            button_up: gpioa.pa0.into_pull_up_input(&mut gpioa.crl),
-            button_down: gpioa.pa1.into_pull_up_input(&mut gpioa.crl),
-            button_right: gpioa.pa2.into_pull_up_input(&mut gpioa.crl),
-            button_left: gpioa.pa3.into_pull_up_input(&mut gpioa.crl),
-        };
-        button_panel.enable_interrupts(&mut afio, &mut cx.device.EXTI);
-
-        // Init status LED
-        rprintln!("-> LED");
-        let status_led = gpioc.pc15.into_push_pull_output(&mut gpioc.crh);
-        blinker::spawn().unwrap();
-
         // Init Display
         rprintln!("-> Display");
         let display_i2c = BlockingI2c::i2c1(
@@ -150,12 +130,45 @@ mod app {
             .into_buffered_graphics_mode();
         while let Err(_) = display.init() {}
 
-        // Init DisplayManager
-        let mut state_manager = StateManager::default_with_display(display);
-        state_manager.render();
+        draw_header(&mut display, "Booting...", true);
+        let _ = display.flush();
+
+        // Init CAN bus
+        rprintln!("-> CAN bus");
+        flush_text_line(&mut display, "-> CAN bus", TEXT_LINE_2);
+        let can = CanContext::new(
+            Can::new(cx.device.CAN1, cx.device.USB),
+            gpiob.pb8.into_floating_input(&mut gpiob.crh), // can rx
+            gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh), // can tx
+            &mut afio.mapr,
+        );
+
+        // Init CAN TX & RX queues
+        let (can_tx_producer, can_tx_consumer) = cx.local.q_tx.split();
+        let (can_rx_producer, can_rx_consumer) = cx.local.q_rx.split();
+
+        // Init buttons
+        rprintln!("-> Buttons");
+        flush_text_line(&mut display, "-> Buttons", TEXT_LINE_3);
+        let (_pa15, _pb3, pb4) = afio.mapr.disable_jtag(gpioa.pa15, gpiob.pb3, gpiob.pb4);
+        let mut button_panel = ButtonPanel {
+            button_ok: pb4.into_pull_up_input(&mut gpiob.crl),
+            button_up: gpioa.pa0.into_pull_up_input(&mut gpioa.crl),
+            button_down: gpioa.pa1.into_pull_up_input(&mut gpioa.crl),
+            button_right: gpioa.pa2.into_pull_up_input(&mut gpioa.crl),
+            button_left: gpioa.pa3.into_pull_up_input(&mut gpioa.crl),
+        };
+        button_panel.enable_interrupts(&mut afio, &mut cx.device.EXTI);
+
+        // Init status LED
+        rprintln!("-> LED");
+        flush_text_line(&mut display, "-> Status LED & blink", TEXT_LINE_4);
+        let status_led = gpioc.pc15.into_push_pull_output(&mut gpioc.crh);
+        blinker::spawn().unwrap();
 
         // Init SD Card
         rprintln!("-> SD Card");
+        flush_text_line(&mut display, "-> SD card", TEXT_LINE_5);
         let volume_manager = {
             let sd_spi = SpiWrapper {
                 spi: Spi::spi2(
@@ -184,6 +197,11 @@ mod app {
 
             sdmmc::VolumeManager::<_, _, 2, 2, 1>::new_with_limits(sd_card, FakeTimeSource {}, 5000)
         };
+
+        // Init DisplayManager
+        let mut state_manager = StateManager::default_with_display(display);
+        state_manager.render();
+        state_updater::spawn().unwrap();
 
         (
             Shared {
