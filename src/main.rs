@@ -40,8 +40,7 @@ mod app {
         buttons::*,
         can::*,
         render::{
-            draw_header, flush_text_line, TEXT_LINE_1, TEXT_LINE_2, TEXT_LINE_3, TEXT_LINE_4,
-            TEXT_LINE_5,
+            draw_header, flush_text_line, TEXT_LINE_2, TEXT_LINE_3, TEXT_LINE_4, TEXT_LINE_5,
         },
         sd::*,
         spi::*,
