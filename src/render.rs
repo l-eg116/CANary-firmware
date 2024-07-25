@@ -132,7 +132,7 @@ fn formatted_string<const N: usize>(
     Ok(string)
 }
 
-fn draw_header(header: &str, is_title: bool, display: &mut Display) {
+pub fn draw_header(display: &mut Display, header: &str, is_title: bool) {
     let text = Text::with_text_style(
         header,
         Point::new((DISPLAY_WIDTH / 2) as i32, TEXT_LINE_1),
@@ -237,7 +237,7 @@ pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
     let title: String<16> =
         formatted_string(format_args!("CANary v{}", env!("CARGO_PKG_VERSION")), false).unwrap();
 
-    draw_header(&title, true, display);
+    draw_header(display, &title, true);
 
     let emit_button_pos = Point::new((DISPLAY_WIDTH / 4) as i32, 37);
     let capt_button_pos = Point::new((DISPLAY_WIDTH / 4 * 3) as i32, 37);
@@ -304,7 +304,7 @@ pub fn draw_file_selection(
     } else {
         dir_str.push_str("root").unwrap();
     }
-    draw_header(&dir_str, false, display);
+    draw_header(display, &dir_str, false);
 
     draw_left_hint(display, "back");
     draw_center_hint(display, "select", -4);
@@ -373,9 +373,9 @@ pub fn draw_emission(
     let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
 
     draw_header(
+        display,
         &formatted_string::<16>(format_args!("{}", selected), true).unwrap(),
         false,
-        display,
     );
     let _ = Image::new(&emit_icon, Point::zero()).draw(display);
 
@@ -475,7 +475,7 @@ pub fn draw_capture(
     } else {
         String::from_str("root").unwrap()
     };
-    draw_header(&selected, false, display);
+    draw_header(display, &selected, false);
     let _ = Image::new(&capture_icon, Point::zero()).draw(display);
 
     if running {
@@ -552,7 +552,7 @@ pub fn draw_emission_settings(
     let right_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp")).unwrap();
     let left_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp")).unwrap();
 
-    draw_header("Emission Settings", false, display);
+    draw_header(display, "Emission Settings", false);
     draw_center_hint(display, "Save", 0);
     let _ = Image::new(&emit_icon, Point::zero()).draw(display);
 
