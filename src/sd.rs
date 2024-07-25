@@ -24,7 +24,6 @@ pub type SdCard = sdmmc::SdCard<
     Mono,
 >;
 pub type VolumeManager = sdmmc::VolumeManager<SdCard, FakeTimeSource, 2, 2>;
-pub type Volume<'a> = sdmmc::Volume<'a, SdCard, FakeTimeSource, 2, 2, 1>;
 pub type Directory<'a> = sdmmc::Directory<'a, SdCard, FakeTimeSource, 2, 2, 1>;
 pub type File<'a> = sdmmc::File<'a, SdCard, FakeTimeSource, 2, 2, 1>;
 

@@ -24,12 +24,6 @@ impl<PINS> spi::ErrorType for SpiWrapper<PINS> {
     type Error = spi::ErrorKind;
 }
 
-impl<PINS> SpiWrapper<PINS> {
-    fn flush(&self) {
-        while self.spi.is_busy() {}
-    }
-}
-
 impl<PINS> SpiDevice for SpiWrapper<PINS> {
     fn transaction(
         &mut self,

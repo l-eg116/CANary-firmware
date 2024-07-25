@@ -52,7 +52,6 @@ pub type Display = Ssd1306<
 const DISPLAY_WIDTH: u32 = 128;
 const DISPLAY_HEIGHT: u32 = 64;
 
-pub const TEXT_HEIGHT: i32 = 12;
 pub const TEXT_LINE_1: i32 = 1 * 12 - 1;
 pub const TEXT_LINE_2: i32 = 2 * 12 + 0;
 pub const TEXT_LINE_3: i32 = 3 * 12 + 1;
@@ -101,10 +100,6 @@ static LEFT_BOTTOM: TextStyle = TextStyleBuilder::new()
 static RIGHT_BOTTOM: TextStyle = TextStyleBuilder::new()
     .alignment(Alignment::Right)
     .baseline(Baseline::Bottom)
-    .build();
-static RIGHT_TOP: TextStyle = TextStyleBuilder::new()
-    .alignment(Alignment::Right)
-    .baseline(Baseline::Top)
     .build();
 
 static BUTTON_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
