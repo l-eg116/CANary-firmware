@@ -2,9 +2,11 @@
 
 CANary firmware is the firmware for the CANary project. This project has the goal of making an independant CAN bus listener and emiter.
 
-This firmware was made for an STM32F103CB and bundles a graphical interface, a CAN bus controller and an SD card explorer. A CAN transciever must be used along the STM32 to properly interface with the CAN bus.
+This firmware was made for a STM32F103CB and bundles a graphical interface, a CAN bus controller and a SD card explorer. A CAN transciever must be used along the STM32 to properly interface with the CAN bus.
 
-## Building the firmware
+## Compiling and flashing
+
+### Building the firmware
 
 To build the firmware, ensure you have the `thumbv7m-none-eabi` target installed for your Rust toolchain. This can be done with the following command :
 
@@ -12,7 +14,7 @@ To build the firmware, ensure you have the `thumbv7m-none-eabi` target installed
 rustup target add thumbv7m-none-eabi
 ```
 
-> Note that due to the [rust-toolchain.toml](rust-toolchain.toml) file present in the directory, the target should automatically be installed on building.
+> Note : due to the [rust-toolchain.toml](rust-toolchain.toml) file present in the directory, the target should automatically be installed on building.
 
 You can then build the firmware using cargo :
 
@@ -24,7 +26,7 @@ cargo build --release
 
 The compiled binary can then be found in the `target/thumbv7m-none-eabi/release` directory.
 
-## Fashing the firmware
+### Fashing the firmware
 
 Flashing makes use of the [probe-rs](https://github.com/probe-rs/probe-rs) tool. First install it using your method of choice by following the [probe-rs installation guide](https://probe.rs/docs/getting-started/installation/).
 
@@ -45,3 +47,23 @@ cargo embed --release
 ```
 
 > If the firmware wasn't already, it will be built before being flashed onto the micro-controller.
+
+### Debugging
+
+Debugging is done through the RTT (Real-Time Transfer) protocol. Upon flashing the device, a RTT terminal should open and a debug output shoud be visible.
+
+You also have the option to attach to an already running device using the `connect` profile :
+
+```bash
+cargo embed connect
+```
+
+> Note : the device must of course be connected via SWD to start RTT.
+
+### Building and reading the docs
+
+The firmware documentation is available through `cargo doc`. Run the following command to compile and open the doc :
+
+```bash
+cargo doc --open
+```
