@@ -1,8 +1,8 @@
 # CANary firmware
 
-CANary firmware is the firmware for the CANary project. This project has the goal of making an independant CAN bus listener and emiter.
+CANary firmware is the firmware for the CANary project. This project has the goal of making an independent CAN bus listener and emitter.
 
-This firmware was made for a STM32F103CB and bundles a graphical interface, a CAN bus controller and a SD card explorer. A CAN transciever must be used along the STM32 to properly interface with the CAN bus.
+This firmware was made for a STM32F103CB and bundles a graphical interface, a CAN bus controller and a SD card explorer. A CAN transceiver must be used along the STM32 to properly interface with the CAN bus.
 
 ## Compiling and flashing
 
@@ -26,7 +26,7 @@ cargo build --release
 
 The compiled binary can then be found in the `target/thumbv7m-none-eabi/release` directory.
 
-### Fashing the firmware
+### Flashing the firmware
 
 Flashing makes use of the [probe-rs](https://github.com/probe-rs/probe-rs) tool. First install it using your method of choice by following the [probe-rs installation guide](https://probe.rs/docs/getting-started/installation/).
 
@@ -50,7 +50,7 @@ cargo embed --release
 
 ### Debugging
 
-Debugging is done through the RTT (Real-Time Transfer) protocol. Upon flashing the device, a RTT terminal should open and a debug output shoud be visible.
+Debugging is done through the RTT (Real-Time Transfer) protocol. Upon flashing the device, a RTT terminal should open and a debug output should be visible.
 
 You also have the option to attach to an already running device using the `connect` profile :
 
@@ -67,3 +67,17 @@ The firmware documentation is available through `cargo doc`. Run the following c
 ```bash
 cargo doc --open
 ```
+
+## Technical details
+
+To simplify development and ensure code quality and readability, a STM32 Hardware Abstraction Layer was used through the [`stm32f1xx-hal`](https://crates.io/crates/stm32f1xx-hal/) crate. This also allows us to use abstractions provided by the [`embedded-hal`](https://crates.io/crates/embedded-hal/) crate. Other hardware essential crates are [`cortex-m`](https://crates.io/crates/cortex-m/), [`heapless`](https://crates.io/crates/heapless/) and [`nb`](https://crates.io/crates/nb/).
+
+As mentioned above, debugging is done through RTT with the [`rtt-target`](https://crates.io/crates/rtt-target/) and [`panic-rtt-target`](https://crates.io/crates/panic-rtt-target/) crates.
+
+This firmware makes heavy use of Real-Time Interrupt-driven Concurrency through the [`rtic`](https://crates.io/crates/rtic/) crate. All execution related functions can be found in the [`mod@app`] module, while other modules contain abstractions essentials to the firmware.
+
+Time on the device is managed through a [Monotonic](app::Mono) provided by the [`rtic-monotonics`](https://crates.io/crates/rtic-monotonics/) crate.
+
+For the display, the [`embedded-graphics`](https://crates.io/crates/embedded-graphics/) crate was used in conjunction with the display driver for [`ssd1306`](https://crates.io/crates/ssd1306/) and [`tinybmp`](https://crates.io/crates/tinybmp/) for icons display. All icons used in the GUI are found in `src/icons` as monochrome `.bmp` files.
+
+Finally a SPI SD Card driver was used through the [`embedded-sdmmc`](https://crates.io/crates/embedded-sdmmc/) crate.
