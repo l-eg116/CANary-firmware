@@ -226,7 +226,7 @@ mod app {
     }
 
     #[task(
-        priority = 2,
+        priority = 12,
         shared = [state_manager],
         local = [status_led],
     )]
@@ -239,7 +239,7 @@ mod app {
                     500.millis()
                 }
             });
-            Mono::delay(delay).await; // TODO : fix blinky stopping on sd_reader/writer
+            Mono::delay(delay).await;
 
             cx.local.status_led.toggle();
         }
@@ -454,7 +454,7 @@ mod app {
     }
 
     #[task(
-        priority = 2,
+        priority = 1,
         shared = [volume_manager, state_manager],
         // local = [],
     )]
