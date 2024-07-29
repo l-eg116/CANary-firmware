@@ -32,7 +32,7 @@ use tinybmp::Bmp;
 
 use crate::{
     can::{Bitrate, EmissionMode},
-    state::{EmissionSettingsItems, HomeItem},
+    state::{EmissionSettingsItem, HomeItem},
 };
 
 pub type Display = Ssd1306<
@@ -542,7 +542,7 @@ pub fn draw_capture(
 
 pub fn draw_emission_settings(
     display: &mut Display,
-    selected_item: &EmissionSettingsItems,
+    selected_item: &EmissionSettingsItem,
     bitrate: &Bitrate,
     mode: &EmissionMode,
 ) {
@@ -587,8 +587,8 @@ pub fn draw_emission_settings(
     .draw(display);
 
     let selected_row = match selected_item {
-        EmissionSettingsItems::Bitrate => TEXT_LINE_2,
-        EmissionSettingsItems::Mode => TEXT_LINE_3,
+        EmissionSettingsItem::Bitrate => TEXT_LINE_2,
+        EmissionSettingsItem::Mode => TEXT_LINE_3,
     };
     let _ = Image::new(
         &left_icon,

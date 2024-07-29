@@ -113,7 +113,7 @@ pub enum Screen {
     },
     Emission,
     EmissionSettings {
-        selected_item: EmissionSettingsItems,
+        selected_item: EmissionSettingsItem,
     },
     CaptureSelection {
         selected_index: usize,
@@ -143,7 +143,7 @@ impl Screen {
             ScreenVariant::EmissionSelection => Self::EmissionSelection { selected_index: 0 },
             ScreenVariant::Emission => Self::Emission,
             ScreenVariant::EmissionSettings => Self::EmissionSettings {
-                selected_item: EmissionSettingsItems::Bitrate,
+                selected_item: EmissionSettingsItem::Bitrate,
             },
             ScreenVariant::CaptureSelection => Self::CaptureSelection { selected_index: 0 },
             ScreenVariant::Capture => Self::Capture,
@@ -241,12 +241,12 @@ impl Screen {
                 Button::Up => selected_item.decrement(),
                 Button::Down => selected_item.increment(),
                 Button::Right => match selected_item {
-                    EmissionSettingsItems::Bitrate => state.bitrate.increment(),
-                    EmissionSettingsItems::Mode => state.emission_mode.increment(),
+                    EmissionSettingsItem::Bitrate => state.bitrate.increment(),
+                    EmissionSettingsItem::Mode => state.emission_mode.increment(),
                 },
                 Button::Left => match selected_item {
-                    EmissionSettingsItems::Bitrate => state.bitrate.decrement(),
-                    EmissionSettingsItems::Mode => state.emission_mode.decrement(),
+                    EmissionSettingsItem::Bitrate => state.bitrate.decrement(),
+                    EmissionSettingsItem::Mode => state.emission_mode.decrement(),
                 },
             },
             Self::CaptureSelection { selected_index } => match button {
@@ -371,12 +371,12 @@ pub enum HomeItem {
 }
 
 #[derive(Debug)]
-pub enum EmissionSettingsItems {
+pub enum EmissionSettingsItem {
     Bitrate,
     Mode,
 }
 
-impl EmissionSettingsItems {
+impl EmissionSettingsItem {
     pub fn increment(&mut self) {
         *self = match self {
             Self::Bitrate | Self::Mode => Self::Mode,
