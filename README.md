@@ -81,3 +81,10 @@ Time on the device is managed through a [Monotonic](app::Mono) provided by the [
 For the display, the [`embedded-graphics`](https://crates.io/crates/embedded-graphics/) crate was used in conjunction with the display driver for [`ssd1306`](https://crates.io/crates/ssd1306/) and [`tinybmp`](https://crates.io/crates/tinybmp/) for icons display. All icons used in the GUI are found in `src/icons` as monochrome `.bmp` files.
 
 Finally a SPI SD Card driver was used through the [`embedded-sdmmc`](https://crates.io/crates/embedded-sdmmc/) crate.
+
+### Build environment
+
+Only a few dependencies are needed to build the firmware. The Rust toolchain needed is presented in the `rust-toolchain.toml` file. Other dependencies are `probe-rs` and `gcc` (or any other C compiler).
+A `shell.nix` is provided to reproduce the build environment. All dependencies are listed in the `buildInputs` field of the Nix Shell (some of them are only necessary in Nix Shells).
+
+For `probe-rs` to work properly, the memory map of the target MCU needs to be provided. This memory map can be found in the `memory.x` file and should not be changed unless the target MCU changes. Other `probe-rs` related flags are configured in `Embed.toml`.
