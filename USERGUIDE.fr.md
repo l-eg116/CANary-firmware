@@ -12,6 +12,7 @@ Dans ce guide vous apprendrez à préparer une carte Micro SD, à émettre et ca
   - [Capturer des trames CAN](#capturer-des-trames-can)
   - [Récupérer une capture](#récupérer-une-capture)
   - [Préparer une émission](#préparer-une-émission)
+  - [Émettre des trames CAN](#émettre-des-trames-can)
 
 ## Préparer une carte Micro SD
 
@@ -112,3 +113,46 @@ Les fichiers doivent être encodés en UTF-8 avec des fin de ligne en LF. Le com
 >     ^^^^^^^^^^^^^ ^^^^^^^^^^^^^^
 >      Identifier      Payload
 > ```
+
+## Émettre des trames CAN
+
+1. Insérez la carte Micro SD dans le CANary.
+
+2. Allumez le CANary en le branchant via le port USB-C. Une LED clignote lorsque l'initialisation est terminée.
+    > L'écran affiche les étapes de l'initialisation. Le démarrage de la carte Micro SD peut être long. Si la LED ne clignote pas après 2 minutes, l'initialisation a échoué : appuyez sur `[RESET]` ou débranchez/rebranchez le CANary. Si le problème persiste, vérifiez le formatage de la Micro SD.
+
+3. Connectez via le connecteur dédié le CANary au bus CAN sur lequel vous voulez émettre.
+
+4. Sélectionnez sur l'écran d'accueil du CANary l'option `Emit` puis faites `[OK]`.
+    <p align="center"><img src="assets/home_screen_emit.png" alt="Home Screen - Emit" width="400"/></p>
+
+5. Sélectionnez le fichier `.log` que vous voulez envoyer sur le bus en naviguant la Micro SD puis faites `[OK]` pour valider.
+    <p align="center"><img src="assets/file_selection_emission.png" alt="File Selection - Emission" width="400"/></p>
+
+    > Note : si un nom de fichier ou dossier est trop long, il sera raccourci et marqué d'un `~`.
+
+6. Avant d'émettre le fichier sélectionné, vous pouvez modifier les paramètres d'émission :
+   - Sur l'écran principal :
+     - Avec `[UP]` et `[DOWN]`, changez le nombre de répétition du fichier (entre 1 et 256). En sélectionnant `xINF`, le fichier sera répété à l'infini jusqu'à un arrêt manuel.
+    <p align="center"><img src="assets/emission_standby.png" alt="Emission - Standby" width="400"/></p>
+
+   - Sur l'écran `Emission Settings` :
+        > Cet écran est accessible en appuyant sur `[RIGHT]` depuis l'écran principal. Utilisez ensuite `[UP]` et `[DOWN]` pour sélectionner un paramètre à modifier et `[RIGHT]` et `[LEFT]` pour le modifier. Appuyez enfin sur `[OK]` pour sauvegarder les modifications et retourner à l'écran principal.
+     - `Bitrate` permet de choisir la Bitrate du bus CAN.
+     - `Mode` permet de choisir le mode d'émission :
+       - `AwaitACK` vérifie et attend le bit de réception avant d'envoyer la trame suivante.
+       - `IgnoreACK` ignore le bit de réception et envoie les trames sans attendre.
+       - `Loopback` lève systématiquement le bit de réception et envoie les trames sans attendre.
+    <p align="center"><img src="assets/emission_settings.png" alt="Emission - Settings" width="400"/></p>
+
+7. Appuyez sur `[OK]` pour démarrer l'émission. Le clignotement de la LED s’accélère.
+    <p align="center"><img src="assets/emission_running.png" alt="Emission - Settings" width="400"/></p>
+
+8. L'émission s'arrête automatiquement après avoir envoyé les trames le nombre de fois spécifié. Si vous aviez entré `xINF`, appuyez sur `[OK]` pour arrêter l'émission au moment désiré. La LED clignote de nouveau normalement et l'écran affiche le nombre de trames envoyées.
+    <p align="center"><img src="assets/emission_stopped.png" alt="Emission - Stopped" width="400"/></p>
+
+    > Si l'écran affiche de nouveau `Standby`, aucune trame n'a été envoyée (le fichier `.log` était vide ou au mauvais format).
+    >
+    > Si le nombre de trames envoyées n'est pas celui attendu, c'est que vous étiez en mode `AwaitACK` et que personne sur le bus n'a répondu ou que le fichier est au mauvais format.
+
+9. Pour lancer une émission du même fichier, appuyez de nouveau sur `[OK]` ou modifiez les paramètres comme à l'étape 6. Pour émettre un autre fichier, appuyez sur `[LEFT]` et reprenez à l'étape 4.
