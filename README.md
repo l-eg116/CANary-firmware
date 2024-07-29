@@ -2,6 +2,8 @@
 
 CANary firmware is the firmware for the CANary project. This project has the goal of making an independent CAN bus listener and emitter.
 
+![CANary Home Screen](assets/home_screen_emit.png)
+
 This firmware was made for a STM32F103CB and bundles a graphical interface, a CAN bus controller and a SD card explorer. A CAN transceiver must be used along the STM32 to properly interface with the CAN bus.
 
 ## Compiling and flashing
