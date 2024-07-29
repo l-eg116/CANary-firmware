@@ -11,6 +11,7 @@ Dans ce guide vous apprendrez à préparer une carte Micro SD, à émettre et ca
   - [Préparer une carte Micro SD](#préparer-une-carte-micro-sd)
   - [Capturer des trames CAN](#capturer-des-trames-can)
   - [Récupérer une capture](#récupérer-une-capture)
+  - [Préparer une émission](#préparer-une-émission)
 
 ## Préparer une carte Micro SD
 
@@ -34,7 +35,7 @@ Il est recommandé pour la capture de créer un dossier dédié sur la carte Mic
 4. Sélectionnez sur l'écran d'accueil du CANary l'option `Capture` puis faites `[OK]`.
     <p align="center"><img src="assets/home_screen_capture.png" alt="Home Screen - Capture" width="400"/></p>
 
-5. Sélectionnez le dossier dans lequel vous voulez que la capture soit enregistré en naviguant la Micro SD puis faites `[OK]` pour sélectionner le dossier.
+5. Sélectionnez le dossier dans lequel vous voulez que la capture soit enregistré en naviguant la Micro SD puis faites `[OK]` pour valider.
     <p align="center"><img src="assets/file_selection_capture.png" alt="File Selection - Capture" width="400"/></p>
 
     > Note : si un nom de dossier est trop long, il sera raccourci et marqué d'un `~`.
@@ -80,9 +81,34 @@ Le nombre dans le nom du fichier représente l'instant où la capture à démarr
 Les trames contenues dans les fichiers `.log` sont au format utilisé par [`can-utils`](https://github.com/linux-can/can-utils), à savoir :
 
 ```log
-(0000375767.000000) can0 001#FF00000000000000
+(0000375767.000000) can0 001#0123456789ABCDEF
  ^^^^^^^^^┤         ^^^┤ ^^┤ ^^^^^^^^^^^^^^^┴─ 8-byte hexadecimal frame payload
           │            │   └─ 11-bit hexadecimal identifier
           │            └─ Can Interface - always can0 on a CANary
           └─ Time of capture (here in ticks since CANary boot)
 ```
+
+## Préparer une émission
+
+Pour émettre des trames CAN, des fichiers `.log` doivent préalablement être chargés sur une carte Micro SD formatée au format FAT (c.f. [Préparer une carte Micro SD](#préparer-une-carte-micro-sd)).
+
+Les trames doivent être présentés au format utilisé par [`can-utils`](https://github.com/linux-can/can-utils) comme présenté dans la section [Récupérer une capture](#récupérer-une-capture). Les 2 premiers éléments sont ignorés et seuls les identifiants et trames sont lus.
+
+Les fichiers doivent être encodés en UTF-8 avec des fin de ligne en LF. Le comportement du CANary n'est pas garantit en cas d'encodage différent ou de fin de ligne en CRLF.
+
+> Les 2 premiers éléments peuvent être omis du fichier `.log`, donnant le format minimal suivant :
+>
+> ```log
+> 001#0123456789ABCDEF
+> 002#23456789ABCDEF01
+> 003#456789ABCDEF0123
+> ...
+> ```
+>
+> Présenté sous forme de regex, une ligne valide de LOG est interprétée ainsi :
+>
+> ```js
+> /.* ([0-9A-F]{3})#([0-9A-F]{16})/i
+>     ^^^^^^^^^^^^^ ^^^^^^^^^^^^^^
+>      Identifier      Payload
+> ```
