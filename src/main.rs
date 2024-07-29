@@ -506,7 +506,7 @@ mod app {
             let mut get_running = || cx.shared.state_manager.lock(|dm| dm.state.running);
 
             while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
-                let logs = CanLogsInterator::new(
+                let logs = CanLogsIterator::new(
                     dir.open_file_in_dir(&file, sdmmc::Mode::ReadOnly).unwrap(),
                 );
 

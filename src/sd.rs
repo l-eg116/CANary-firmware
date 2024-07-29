@@ -38,21 +38,21 @@ pub fn decode_hex(s: &str) -> Result<Vec<u8, 8>, ()> {
     }
 }
 
-pub struct CanLogsInterator<'a> {
+pub struct CanLogsIterator<'a> {
     log_file: File<'a>,
     stored: String<STORE_BUFFER_SIZE>,
 }
 
-impl CanLogsInterator<'_> {
-    pub fn new(log_file: File) -> CanLogsInterator {
-        CanLogsInterator {
+impl<'a> CanLogsIterator<'a> {
+    pub fn new(log_file: File<'a>) -> Self {
+        Self {
             log_file,
             stored: String::new(),
         }
     }
 }
 
-impl Iterator for CanLogsInterator<'_> {
+impl Iterator for CanLogsIterator<'_> {
     type Item = Frame;
 
     // TODO : improve error handling to skip invalid lines instead of ending iteration
