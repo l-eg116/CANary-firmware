@@ -10,7 +10,8 @@ pkgs.mkShell {
   buildInputs = [
     rust
   ] ++ (with pkgs; [
-    pkg-config udev
+    pkg-config
+    udev
     cargo-binutils
     cargo-expand
     probe-rs
@@ -18,8 +19,4 @@ pkgs.mkShell {
     gdb
   ]);
   RUST_BACKTRACE = 1;
-
-  shellHook = ''
-    # SHELL=fish code .
-  '';
 }
