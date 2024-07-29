@@ -10,6 +10,7 @@ Dans ce guide vous apprendrez à préparer une carte Micro SD, à émettre et ca
   - [Sommaire](#sommaire)
   - [Préparer une carte Micro SD](#préparer-une-carte-micro-sd)
   - [Capturer des trames CAN](#capturer-des-trames-can)
+  - [Récupérer une capture](#récupérer-une-capture)
 
 ## Préparer une carte Micro SD
 
@@ -57,3 +58,31 @@ Il est recommandé pour la capture de créer un dossier dédié sur la carte Mic
     > Si l'écran affiche de nouveau `Standby`, aucune trame n'a été capturée.
 
 9. Pour lancer une nouvelle capture dans le même dossier, appuyez simplement de nouveau sur `[OK]`. Pour lancer une capture dans un autre dossier, appuyez sur `[LEFT]` et reprenez à l'étape 4.
+
+## Récupérer une capture
+
+Pour récupérer les trames capturées, éteignez (débranchez) le CANary, enlevez-en la carte Micro SD et insérez là dans un ordinateur. Vous retrouvez alors des fichiers `.log` dans le(s) dossier(s) où vous avez fait les captures.
+
+```text
+.
+├── captures
+│  ├── 00013790.LOG
+│  ├── 00214706.LOG
+│  ├── 00234989.LOG
+│  ├── 00374174.LOG
+│  ├── 00388492.LOG
+│  └── ...
+└── ...
+```
+
+Le nombre dans le nom du fichier représente l'instant où la capture à démarrer, en nombre de millisecondes depuis le démarrage du CANary. Le CANary n'ayant pas connaissance de la date, ces noms de fichiers permettent simplement de savoir dans quelle ordre les captures ont été faites. Ainsi une capture avec un nombre plus grand aura été faites après une capture avec un nombre plus petit.
+
+Les trames contenues dans les fichiers `.log` sont au format utilisé par [`can-utils`](https://github.com/linux-can/can-utils), à savoir :
+
+```log
+(0000375767.000000) can0 001#FF00000000000000
+ ^^^^^^^^^┤         ^^^┤ ^^┤ ^^^^^^^^^^^^^^^┴─ 8-byte hexadecimal frame payload
+          │            │   └─ 11-bit hexadecimal identifier
+          │            └─ Can Interface - always can0 on a CANary
+          └─ Time of capture (here in ticks since CANary boot)
+```
