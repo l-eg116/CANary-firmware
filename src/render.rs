@@ -235,10 +235,7 @@ pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
     let capture_icon =
         Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp")).unwrap();
 
-    let title: String<16> =
-        formatted_string(format_args!("CANary v{}", env!("CARGO_PKG_VERSION")), false).unwrap();
-
-    draw_header(display, &title, true);
+    draw_header(display, concat!("CANary v", env!("CARGO_PKG_VERSION")), true);
 
     let emit_button_pos = Point::new((DISPLAY_WIDTH / 4) as i32, 37);
     let capt_button_pos = Point::new((DISPLAY_WIDTH / 4 * 3) as i32, 37);
