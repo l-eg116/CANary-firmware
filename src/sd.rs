@@ -130,7 +130,11 @@ pub fn index_dir<const N: usize>(
         if dirs_only && !e.attributes.is_directory() {
             return;
         }
+
         let e = (e.attributes.is_directory(), e.name.clone());
+        if !dirs_only && e == (true, ShortFileName::this_dir()) {
+            return;
+        }
 
         let mut i = 0;
         while i < content.len() {
