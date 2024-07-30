@@ -2,8 +2,10 @@
 
 CANary firmware is the firmware for the CANary project. This project has the goal of making an independent CAN bus listener and emitter.
 
+<p align="center">
 <img src="assets/home_screen_emit.png" alt="🖼️ CANary Home Screen" height="250"/>
 <img src="assets/hardware_3D.png" alt="🖼️ CANary Hardware - 3D render" height="250"/>
+</p>
 
 This firmware was made for a STM32F103CB and bundles a graphical interface, a CAN bus controller and a SD card explorer. A CAN transceiver must be used along the STM32 to properly interface with the CAN bus.
 
@@ -25,7 +27,7 @@ You can then build the firmware using cargo :
 cargo build --release
 ```
 
-> Note : some flags are being set for the `cargo build` command through the [.cargo/config.toml](.cargo/config.toml) file.
+> Note : some flags are being implicitly set for the `cargo build` command through the [.cargo/config.toml](.cargo/config.toml) file.
 
 The compiled binary can then be found in the `target/thumbv7m-none-eabi/release` directory.
 
@@ -41,7 +43,26 @@ Power your CANary by plugging in a USB-C cable and test the connection :
 probe-rs info
 ```
 
-You should have an output listing the technical characteristics of the micro-controller. If you can an error, read through the error message to try and find the issue. The [probe-rs documentation](https://probe.rs/docs/) can be a great help in troubleshooting.
+You should have an output listing the technical characteristics of the micro-controller. If you get an error, read through the error message to try and find the issue. The [probe-rs documentation](https://probe.rs/docs/) can be a great help in troubleshooting.
+
+> Expected output :
+>
+> ```bash
+> ARM Chip with debug port Default:
+> Debug Port: DPv1, DP Designer: ARM Ltd
+> └── 0 MemoryAP
+>     └── ROM Table (Class 1), Designer: STMicroelectronics
+>         ├── Cortex-M3 SCS   (Generic IP component)
+>         │   └── CPUID
+>         │       ├── IMPLEMENTER: ARM Ltd
+>         │       ├── VARIANT: 1
+>         │       ├── PARTNO: Cortex-M3
+>         │       └── REVISION: 1
+>         ├── Cortex-M3 DWT   (Generic IP component)
+>         ├── Cortex-M3 FBP   (Generic IP component)
+>         ├── Cortex-M3 ITM   (Generic IP component)
+>         └── Cortex-M3 TPIU  (Coresight Component)
+> ```
 
 If all succeeded, you can now flash the firmware by using :
 
@@ -88,6 +109,6 @@ Finally a SPI SD Card driver was used through the [`embedded-sdmmc`](https://cra
 ### Build environment
 
 Only a few dependencies are needed to build the firmware. The Rust toolchain needed is presented in the `rust-toolchain.toml` file. Other dependencies are `probe-rs` and `gcc` (or any other C compiler).
-A `shell.nix` is provided to reproduce the build environment. All dependencies are listed in the `buildInputs` field of the Nix Shell (some of them are only necessary in Nix Shells).
+A `shell.nix` is provided to reproduce the build environment. All dependencies are listed in the `buildInputs` field of the Nix Shell (some of them are only necessary in Nix Shells like `pkg-config` and `udev`).
 
 For `probe-rs` to work properly, the memory map of the target MCU needs to be provided. This memory map can be found in the `memory.x` file and should not be changed unless the target MCU changes. Other `probe-rs` related flags are configured in `Embed.toml`.
