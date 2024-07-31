@@ -113,7 +113,7 @@ static BUTTON_STROKE_SELECTED: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuild
     .stroke_alignment(StrokeAlignment::Inside)
     .build();
 
-fn formatted_string<const N: usize>(
+pub fn formatted_string<const N: usize>(
     args: Arguments<'_>,
     make_lowercase: bool,
 ) -> Result<String<N>, core::fmt::Error> {

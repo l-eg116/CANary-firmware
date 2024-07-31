@@ -40,7 +40,8 @@ mod app {
         buttons::*,
         can::*,
         render::{
-            draw_header, flush_text_line, TEXT_LINE_2, TEXT_LINE_3, TEXT_LINE_4, TEXT_LINE_5,
+            draw_header, flush_text_line, formatted_string, TEXT_LINE_2, TEXT_LINE_3, TEXT_LINE_4,
+            TEXT_LINE_5,
         },
         sd::*,
         spi::*,
@@ -558,6 +559,22 @@ mod app {
                 .unwrap();
 
             rprintln!("Writing started to '{}'", file_name);
+            let (bitrate, silent) = cx
+                .shared
+                .state_manager
+                .lock(|sm| (sm.state.bitrate, sm.state.capture_silent));
+            let _ = logs.write(
+                formatted_string::<64>(
+                    format_args!(
+                        "# Frames captured by CANary - Bitrate: {:4} kbps, Silent: {}\n",
+                        bitrate as u32 / 1000,
+                        silent
+                    ),
+                    false,
+                )
+                .unwrap()
+                .as_bytes(),
+            );
 
             while cx.shared.state_manager.lock(|dm| dm.state.running) {
                 if let Some(frame) = rx_queue.dequeue() {
