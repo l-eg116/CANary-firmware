@@ -80,6 +80,10 @@ impl Iterator for CanLogsIterator<'_> {
             let log_line = &stored_clone[..new_line_i];
             self.stored = String::from_str(&stored_clone[new_line_i + 1..]).expect("it fits");
 
+            if log_line.starts_with('#') {
+                continue; // skip comments
+            }
+
             let mut frame_bytes = log_line.split(" ").last()?.split("#");
             let frame_id = u16::from_str_radix(frame_bytes.next()?, 16).ok()?; // ? frame_bytes doesn't have >= 1 elements || ? invalid hexadecimal
             let frame_data = decode_hex(frame_bytes.next()?).ok()?; // ? frame_bytes doesn't have >= 2 elements || ? invalid hexadecimal
