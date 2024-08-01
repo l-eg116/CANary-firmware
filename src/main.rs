@@ -50,7 +50,9 @@ mod app {
 
     pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
-    pub const CLOCK_RATE_MHZ: u32 = 64;
+    pub const HSE_CLOCK_RATE_MHZ: u32 = 8;
+    pub const SYS_CLOCK_RATE_MHZ: u32 = 64;
+    pub const PCLK1_CLOCK_RATE_MHZ: u32 = 16;
     pub const TICK_RATE: u32 = 1_000;
     pub const DEBOUNCE_DELAY_MS: u32 = 100;
     pub const SD_SPI_CLK_MHZ: u32 = 16;
@@ -93,13 +95,13 @@ mod app {
 
         let clocks = rcc
             .cfgr
-            .use_hse(8.MHz())
-            .sysclk(CLOCK_RATE_MHZ.MHz())
-            .hclk(CLOCK_RATE_MHZ.MHz())
-            .pclk1(16.MHz())
-            .pclk2(CLOCK_RATE_MHZ.MHz())
+            .use_hse(HSE_CLOCK_RATE_MHZ.MHz())
+            .sysclk(SYS_CLOCK_RATE_MHZ.MHz())
+            .hclk(SYS_CLOCK_RATE_MHZ.MHz())
+            .pclk1(PCLK1_CLOCK_RATE_MHZ.MHz())
+            .pclk2(SYS_CLOCK_RATE_MHZ.MHz())
             .freeze(&mut flash.acr);
-        Mono::start(cx.core.SYST, CLOCK_RATE_MHZ * 1_000_000);
+        Mono::start(cx.core.SYST, SYS_CLOCK_RATE_MHZ * 1_000_000);
 
         let mut gpioa = cx.device.GPIOA.split();
         let mut gpiob = cx.device.GPIOB.split();
