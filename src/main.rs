@@ -107,19 +107,28 @@ mod app {
 
     #[shared]
     struct Shared {
+        /// Wrapped CAN bus manager.
         can: CanContext,
+        /// Wrapped buttons manager.
         #[lock_free]
         button_panel: ButtonPanel,
+        /// SD card volume manager.
         volume_manager: VolumeManager,
+        /// System state manager, wraps a [Display](crate::render::Display) and [State](State).
         state_manager: StateManager,
     }
 
     #[local]
     struct Local {
+        /// Producer end of the CAN TX queue. Used by [sd_reader()].
         can_tx_producer: Producer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
+        /// Consumer end of the CAN TX queue. Used by [can_sender()].
         can_tx_consumer: Consumer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
+        /// Producer end of the CAN RX queue. Used by [can_receiver()].
         can_rx_producer: Producer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
+        /// Consumer end of the CAN RX queue. Used by [sd_writer()].
         can_rx_consumer: Consumer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
+        /// Status LED control pin. Used by [blinker()].
         status_led: Pin<'C', 15, Output>,
     }
 
