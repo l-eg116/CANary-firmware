@@ -253,7 +253,7 @@ mod app {
             sdmmc::VolumeManager::<_, _, 2, 2, 1>::new_with_limits(sd_card, FakeTimeSource {}, 5000)
         };
 
-        // Init DisplayManager
+        // Init StateManager
         let mut state_manager = StateManager::default_with_display(display);
         state_manager.render();
         state_updater::spawn().unwrap();
@@ -288,8 +288,8 @@ mod app {
     )]
     async fn blinker(mut cx: blinker::Context) {
         loop {
-            let delay = cx.shared.state_manager.lock(|dm| {
-                if dm.state.running {
+            let delay = cx.shared.state_manager.lock(|sm| {
+                if sm.state.running {
                     100.millis()
                 } else {
                     500.millis()
@@ -373,7 +373,7 @@ mod app {
         };
 
         rprintln!("Pressed OK");
-        cx.shared.state_manager.lock(|dm| dm.press(Button::Ok));
+        cx.shared.state_manager.lock(|sm| sm.press(Button::Ok));
         let _ = state_updater::spawn();
     }
 
@@ -393,7 +393,7 @@ mod app {
         };
 
         rprintln!("Pressed UP");
-        cx.shared.state_manager.lock(|dm| dm.press(Button::Up));
+        cx.shared.state_manager.lock(|sm| sm.press(Button::Up));
         let _ = state_updater::spawn();
     }
 
@@ -413,7 +413,7 @@ mod app {
         };
 
         rprintln!("Pressed DOWN");
-        cx.shared.state_manager.lock(|dm| dm.press(Button::Down));
+        cx.shared.state_manager.lock(|sm| sm.press(Button::Down));
         let _ = state_updater::spawn();
     }
 
@@ -433,7 +433,7 @@ mod app {
         };
 
         rprintln!("Pressed RIGHT");
-        cx.shared.state_manager.lock(|dm| dm.press(Button::Right));
+        cx.shared.state_manager.lock(|sm| sm.press(Button::Right));
         let _ = state_updater::spawn();
     }
 
@@ -453,7 +453,7 @@ mod app {
         };
 
         rprintln!("Pressed LEFT");
-        cx.shared.state_manager.lock(|dm| dm.press(Button::Left));
+        cx.shared.state_manager.lock(|sm| sm.press(Button::Left));
         let _ = state_updater::spawn();
     }
 
@@ -462,8 +462,8 @@ mod app {
         shared = [state_manager, can],
     )]
     async fn state_updater(cx: state_updater::Context) {
-        (cx.shared.state_manager, cx.shared.can).lock(|dm, can| {
-            match (dm.current_screen(), &dm.state) {
+        (cx.shared.state_manager, cx.shared.can).lock(|sm, can| {
+            match (sm.current_screen(), &sm.state) {
                 (Screen::EmissionSelection { .. }, State { running: true, .. }) => {
                     sd_indexer::spawn(false).expect("sd_indexer isn't running");
                 }
@@ -474,7 +474,7 @@ mod app {
                     Screen::EmissionSelection { .. } | Screen::CaptureSelection { .. },
                     State { running: false, .. },
                 ) => {
-                    dm.render();
+                    sm.render();
                 }
                 (
                     Screen::Emission,
@@ -502,7 +502,7 @@ mod app {
                 }
                 (Screen::Emission | Screen::Capture, State { running: false, .. }) => {
                     can.disable();
-                    dm.render();
+                    sm.render();
                 }
                 _ => {}
             }
@@ -515,19 +515,19 @@ mod app {
         // local = [],
     )]
     async fn sd_indexer(cx: sd_indexer::Context, dirs_only: bool) {
-        (cx.shared.volume_manager, cx.shared.state_manager).lock(|vm, dm| {
+        (cx.shared.volume_manager, cx.shared.state_manager).lock(|vm, sm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut dir = sd_volume.open_root_dir().unwrap();
 
-            for dir_name in &dm.state.dir_path {
+            for dir_name in &sm.state.dir_path {
                 dir.change_dir(dir_name).unwrap();
             }
 
-            dm.state.dir_content = Vec::new();
-            index_dir(&mut dir, &mut dm.state.dir_content, dirs_only).unwrap();
+            sm.state.dir_content = Vec::new();
+            index_dir(&mut dir, &mut sm.state.dir_content, dirs_only).unwrap();
 
-            rprintln!("{:?}", dm.state.dir_content);
-            dm.state.running = false;
+            rprintln!("{:?}", sm.state.dir_content);
+            sm.state.running = false;
         });
 
         state_updater::spawn().expect("could not update state");
@@ -540,7 +540,7 @@ mod app {
     )]
     async fn sd_reader(mut cx: sd_reader::Context) {
         let tx_queue = cx.local.can_tx_producer;
-        let mut emission_count = match cx.shared.state_manager.lock(|dm| dm.state.emission_count) {
+        let mut emission_count = match cx.shared.state_manager.lock(|sm| sm.state.emission_count) {
             0 => None,
             n => Some(n),
         };
@@ -550,8 +550,8 @@ mod app {
             let mut dir = sd_volume.open_root_dir().unwrap();
             let mut file = ShortFileName::this_dir();
 
-            cx.shared.state_manager.lock(|dm| {
-                let (_file, path) = dm.state.dir_path.split_last().expect("path is provided");
+            cx.shared.state_manager.lock(|sm| {
+                let (_file, path) = sm.state.dir_path.split_last().expect("path is provided");
                 file = _file.clone();
                 for dir_name in path {
                     rprintln!("{:?}", dir_name);
@@ -559,7 +559,7 @@ mod app {
                 }
             });
 
-            let mut get_running = || cx.shared.state_manager.lock(|dm| dm.state.running);
+            let mut get_running = || cx.shared.state_manager.lock(|sm| sm.state.running);
 
             while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
                 let logs = CanLogsIterator::new(
@@ -583,7 +583,7 @@ mod app {
         });
 
         // TODO : fix bug where old frames stay stuck in the queue
-        cx.shared.state_manager.lock(|dm| dm.state.running = false);
+        cx.shared.state_manager.lock(|sm| sm.state.running = false);
         state_updater::spawn().expect("could not update state");
     }
 
@@ -599,8 +599,8 @@ mod app {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
             let mut dir = sd_volume.open_root_dir().unwrap();
 
-            cx.shared.state_manager.lock(|dm| {
-                for dir_name in &dm.state.dir_path {
+            cx.shared.state_manager.lock(|sm| {
+                for dir_name in &sm.state.dir_path {
                     dir.change_dir(dir_name).unwrap();
                 }
             });
@@ -631,7 +631,7 @@ mod app {
                 .as_bytes(),
             );
 
-            while cx.shared.state_manager.lock(|dm| dm.state.running) {
+            while cx.shared.state_manager.lock(|sm| sm.state.running) {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
@@ -639,7 +639,7 @@ mod app {
                     } else {
                         cx.shared
                             .state_manager
-                            .lock(|dm| dm.state.success_count += 1);
+                            .lock(|sm| sm.state.success_count += 1);
                     };
                 }
             }
