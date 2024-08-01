@@ -48,15 +48,59 @@ mod app {
         state::*,
     };
 
-    pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
-    pub const SD_RX_QUEUE_CAPACITY: usize = 64;
+    /// Frequency of external oscillator.
+    ///
+    /// See [stm32f1xx_hal::rcc::CFGR::use_hse()] for details.
     pub const HSE_CLOCK_RATE_MHZ: u32 = 8;
+    /// MCU main system Clock Rate.
+    ///
+    /// Can be between 8 and 72 MHz. Check the STM32F103Cx documentation for details.
+    ///
+    /// See [stm32f1xx_hal::rcc::CFGR::sysclk()] for details.
     pub const SYS_CLOCK_RATE_MHZ: u32 = 64;
+    const _: () = assert!(8 <= SYS_CLOCK_RATE_MHZ && SYS_CLOCK_RATE_MHZ <= 72);
+    /// Frequency of the PCLK1 clock.
+    ///
+    /// Defines the upper bound for SPI clock rates.
+    ///
+    /// See [stm32f1xx_hal::rcc::CFGR::pclk1()] for details.
     pub const PCLK1_CLOCK_RATE_MHZ: u32 = 16;
+    /// The tick rate of the timer peripheral in Hz.
+    ///
+    /// This defines the precision of the time managing [Monotonic](Mono).
     pub const TICK_RATE: u32 = 1_000;
+
+    /// Capacity of the CAN TX queue.
+    ///
+    /// This queue serves as a buffer for SD reading operations. It gets filled by [sd_reader()]
+    /// and is consumed by [can_sender()].
+    pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
+    /// Capacity of the CAN RX queue.
+    ///
+    /// This queue serves as a buffer for SD writing operations. It gets filled by [can_receiver()]
+    /// and is consumed by [sd_writer()]. It's important to make the queue large as SD writing operations
+    /// are much slower than a full speed CAN bus.
+    pub const SD_RX_QUEUE_CAPACITY: usize = 64;
+
+    /// Debouncing delay applied to button inputs.
+    ///
+    /// Button presses for a same button closer that [DEBOUNCE_DELAY_MS] will be ignored.
     pub const DEBOUNCE_DELAY_MS: u32 = 100;
+
+    /// SPI clock rate for the SD interface.
+    ///
+    /// Must be lower than [PCLK1_CLOCK_RATE_MHZ].
     pub const SD_SPI_CLK_MHZ: u32 = 16;
+    const _: () = assert!(SD_SPI_CLK_MHZ <= PCLK1_CLOCK_RATE_MHZ);
+    /// Maximum number of file from a single directory than can be loaded at once.
+    ///
+    /// If a directory contains more than [MAX_SD_INDEX_AMOUNT] files, only the first [MAX_SD_INDEX_AMOUNT]
+    /// files will be displayed.
     pub const MAX_SD_INDEX_AMOUNT: usize = 32;
+    /// Maximum indexing depth of the SD indexer.
+    ///
+    /// Opening a directory in the file explorer increases the depth of the indexer. File or directories
+    /// selected beyond the [MAX_SD_INDEX_DEPTH]th directory will not be able to be opened.
     pub const MAX_SD_INDEX_DEPTH: usize = 8;
 
     systick_monotonic!(Mono, TICK_RATE);
