@@ -258,6 +258,8 @@ mod app {
         state_manager.render();
         state_updater::spawn().unwrap();
 
+        rprintln!("Initialisation done");
+
         (
             Shared {
                 can,
@@ -273,12 +275,6 @@ mod app {
                 status_led,
             },
         )
-    }
-
-    #[idle]
-    fn idle(_: idle::Context) -> ! {
-        rprintln!("Entering idle loop");
-        loop {}
     }
 
     #[task(
