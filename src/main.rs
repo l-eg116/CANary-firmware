@@ -132,6 +132,19 @@ mod app {
         status_led: Pin<'C', 15, Output>,
     }
 
+    /// Initialisation routine
+    ///
+    /// This routine :
+    /// - Configures system clocks
+    /// - Configures GPIOs (buttons and LED)
+    /// - Initialises the Display
+    /// - Sets up the CAN transceiver
+    /// - Initialises the SD card
+    /// - Sets up the State Manager
+    ///
+    /// Improvements could be made to this routine, like :
+    /// - Display boot error message, especially for the SD care initialisation that is quite error prone
+    /// - Make SD initialisation non blocking so that the home screen can be displayed early
     #[init(
         local = [
             q_tx: Queue<Frame, CAN_TX_QUEUE_CAPACITY> = Queue::new(),
