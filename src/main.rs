@@ -642,7 +642,7 @@ mod app {
                 .as_bytes(),
             );
 
-            while cx.shared.state_manager.lock(|sm| sm.state.running) {
+            while cx.shared.state_manager.lock(|sm| sm.state.running) || rx_queue.ready() {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
                     if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
@@ -656,7 +656,6 @@ mod app {
             }
         });
 
-        while let Some(_) = rx_queue.dequeue() {} // Empty Queue for next time
         rprintln!("Writing stopped");
     }
 }
