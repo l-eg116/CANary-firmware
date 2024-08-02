@@ -132,7 +132,7 @@ mod app {
         status_led: Pin<'C', 15, Output>,
     }
 
-    /// Initialisation routine
+    /// Initialisation function.
     ///
     /// This routine :
     /// - Configures system clocks
@@ -290,6 +290,11 @@ mod app {
         )
     }
 
+    /// Function responsible of the Status LED.
+    ///
+    /// Blinks slowly while idle and rapidly while running.
+    ///
+    /// Should always have priority to ensure blinking during otherwise blocking operations.
     #[task(
         priority = 12,
         shared = [state_manager],
@@ -310,6 +315,14 @@ mod app {
         }
     }
 
+    /// Function sending queued CAN frames.
+    ///
+    /// It triggers with the [USB_HP_CAN_TX()] interrupt and empties the CAN TX Queue. The interrupt must be
+    /// enabled for this function to trigger.
+    ///
+    /// The [USB_HP_CAN_TX()] interrupt must be triggered the first time items are added to the Queue
+    /// to initiate transmission. Every successful transmission will trigger the interrupt again and
+    /// thus consume the CAN TX Queue until empty.
     #[task(
         binds = USB_HP_CAN_TX,
         priority = 4,
@@ -325,7 +338,7 @@ mod app {
 
             if can.bus.is_transmitter_idle() {
                 while let Some(frame) = tx_queue.peek() {
-                    rprintln!("Transmiting {:?}", frame);
+                    rprintln!("Transmitting {:?}", frame);
                     match can.bus.transmit(&frame) {
                         Ok(status) => {
                             tx_queue.dequeue();
@@ -346,6 +359,12 @@ mod app {
         });
     }
 
+    /// Function queuing received CAN frames for SD writing.
+    ///
+    /// It triggers with the [USB_LP_CAN_RX0()] interrupt and fills the SD RX Queue. The interrupt
+    /// must be enabled for this function to trigger.
+    ///
+    /// If the SD RX Queue is full, the received frame will be dumped and a warning will be emitted.
     #[task(
         binds = USB_LP_CAN_RX0,
         priority = 5,
@@ -366,6 +385,12 @@ mod app {
         });
     }
 
+    /// Function handling OK button inputs.
+    ///
+    /// It is triggered by the [EXTI4()] interrupt which can be triggered by any enabled Px4 pin (PA4,
+    /// PB4, PC4). See [init()] for details on enabled pins.
+    ///
+    /// It first checks for debouncing then updates the [StateManager].
     #[task(
         binds = EXTI4,
         priority = 8,
@@ -386,6 +411,12 @@ mod app {
         let _ = state_updater::spawn();
     }
 
+    /// Function handling UP button inputs.
+    ///
+    /// It is triggered by the [EXTI0()] interrupt which can be triggered by any enabled Px0 pin (PA0,
+    /// PB0, PC0, PD0). See [init()] for details on enabled pins.
+    ///
+    /// It first checks for debouncing then updates the [StateManager].
     #[task(
         binds = EXTI0,
         priority = 8,
@@ -406,6 +437,12 @@ mod app {
         let _ = state_updater::spawn();
     }
 
+    /// Function handling DOWN button inputs.
+    ///
+    /// It is triggered by the [EXTI1()] interrupt which can be triggered by any enabled Px1 pin (PA1,
+    /// PB1, PC1, PD1). See [init()] for details on enabled pins.
+    ///
+    /// It first checks for debouncing then updates the [StateManager].
     #[task(
         binds = EXTI1,
         priority = 8,
@@ -426,6 +463,12 @@ mod app {
         let _ = state_updater::spawn();
     }
 
+    /// Function handling RIGHT button inputs.
+    ///
+    /// It is triggered by the [EXTI2()] interrupt which can be triggered by any enabled Px2 pin (PA2,
+    /// PB2, PC2). See [init()] for details on enabled pins.
+    ///
+    /// It first checks for debouncing then updates the [StateManager].
     #[task(
         binds = EXTI2,
         priority = 8,
@@ -446,6 +489,12 @@ mod app {
         let _ = state_updater::spawn();
     }
 
+    /// Function handling LEFT button inputs.
+    ///
+    /// It is triggered by the [EXTI3()] interrupt which can be triggered by any enabled Px3 pin (PA3,
+    /// PB3, PC3). See [init()] for details on enabled pins.
+    ///
+    /// It first checks for debouncing then updates the [StateManager].
     #[task(
         binds = EXTI3,
         priority = 8,
@@ -466,6 +515,14 @@ mod app {
         let _ = state_updater::spawn();
     }
 
+    /// Function propagating updates done to the [StateManager].
+    ///
+    /// It matches the current screen being displayed and the state of the system to determine which
+    /// function to spawn of interrupt to set up. It handles starting and stopping reading and writing
+    /// operations and thus has higher priority than all other blocking operations. If necessary, it
+    /// will also trigger a [render](StateManager::render()).
+    ///
+    /// It can be called after user inputs (buttons) or when a reading or writing operation finishes.
     #[task(
         priority = 7,
         shared = [state_manager, can],
@@ -507,7 +564,7 @@ mod app {
                     },
                 ) => {
                     can.enable_rx(*bitrate, *capture_silent);
-                    let _ = sd_writer::spawn(); // Can already be spawed in case of ignored button
+                    let _ = sd_writer::spawn(); // Can be already spawned since [state_updater()] will be called again if a button other than OK is pressed.
                 }
                 (Screen::Emission | Screen::Capture, State { running: false, .. }) => {
                     can.disable();
@@ -518,6 +575,14 @@ mod app {
         });
     }
 
+    /// Function indexing the Micro SD.
+    ///
+    /// When called, it will read the path to index from [State::dir_path] and populate
+    /// [State::dir_content] with the index. It will only index the first [MAX_SD_INDEX_AMOUNT]
+    /// files and folder found.
+    ///
+    /// The files and folder indexed are sorted with directories first and then by alphabetical
+    /// order. See [index_dir()] for implementation details.
     #[task(
         priority = 1,
         shared = [volume_manager, state_manager],
@@ -542,6 +607,16 @@ mod app {
         state_updater::spawn().expect("could not update state");
     }
 
+    /// Function reading CAN frames from a file on the Micro SD.
+    ///
+    /// When called, it will resolve the path given in [State::dir_path] and start reading the
+    /// file's content. See [sd::CanLogsIterator] for implementation details. It will loop over the
+    /// file [State::emission_count] times except if it is `0`, in which case it will loop until
+    /// [State::running] is set to `false`. The frames read from the file will be queued to the CAN
+    /// TX Queue to be read by [can_sender()].
+    ///
+    /// Once reading is done, [State::running] will be set to false and [state_updater()] will be
+    /// called.
     #[task(
         priority = 1,
         shared = [volume_manager, state_manager],
@@ -568,7 +643,7 @@ mod app {
                 (file.clone(), dir)
             });
 
-            let mut get_running = || cx.shared.state_manager.lock(|sm| sm.state.running);
+            let mut get_running = || cx.shared.state_manager.lock(|sm| sm.state.running); // Function alias for code readability
 
             while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
                 let logs = CanLogsIterator::new(
@@ -588,14 +663,22 @@ mod app {
                 }
             }
 
-            while tx_queue.len() != 0 && get_running() {}
+            while tx_queue.len() != 0 && get_running() {} // Wait here for queue to be empty to prevent early `running = false`
         });
 
-        // TODO : fix bug where old frames stay stuck in the queue
         cx.shared.state_manager.lock(|sm| sm.state.running = false);
         state_updater::spawn().expect("could not update state");
     }
 
+    /// Function writing received CAN frames to the Micro SD.
+    ///
+    /// When called, it will resolve the path given in [State::dir_path] and create a file in the
+    /// found folder. It will then wait for frames to be queued in the SD RX Queue. Queued frames
+    /// will then be poped and written on the Micro SD.
+    /// 
+    /// When [State::running] is set to false, the Queue will be emptied and written in the file
+    /// before exiting. This is to prevent too many frames from being lost due to slowness of SD
+    /// writing compared to CAN reading, making [sd_writer()] late compared to [can_receiver()].
     #[task(
         priority = 1,
         shared = [volume_manager, state_manager],
