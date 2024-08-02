@@ -17,7 +17,7 @@ mod app {
     use core::fmt::Write;
 
     use bxcan::Frame;
-    use embedded_sdmmc::{self as sdmmc, ShortFileName};
+    use embedded_sdmmc as sdmmc;
     use fugit::Instant;
     use heapless::{
         spsc::{Consumer, Producer, Queue},
@@ -556,16 +556,16 @@ mod app {
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
-            let mut dir = sd_volume.open_root_dir().unwrap();
-            let mut file = ShortFileName::this_dir();
 
-            cx.shared.state_manager.lock(|sm| {
-                let (_file, path) = sm.state.dir_path.split_last().expect("path is provided");
-                file = _file.clone();
+            let (file, mut dir) = cx.shared.state_manager.lock(|sm| {
+                let mut dir = sd_volume.open_root_dir().unwrap();
+                let (file, path) = sm.state.dir_path.split_last().expect("path is provided");
                 for dir_name in path {
                     rprintln!("{:?}", dir_name);
                     dir.change_dir(dir_name).unwrap();
                 }
+
+                (file.clone(), dir)
             });
 
             let mut get_running = || cx.shared.state_manager.lock(|sm| sm.state.running);
@@ -606,12 +606,14 @@ mod app {
 
         cx.shared.volume_manager.lock(|vm| {
             let mut sd_volume = vm.open_volume(sdmmc::VolumeIdx(0)).unwrap();
-            let mut dir = sd_volume.open_root_dir().unwrap();
 
-            cx.shared.state_manager.lock(|sm| {
+            let mut dir = cx.shared.state_manager.lock(|sm| {
+                let mut dir = sd_volume.open_root_dir().unwrap();
                 for dir_name in &sm.state.dir_path {
                     dir.change_dir(dir_name).unwrap();
                 }
+
+                dir
             });
 
             let mut file_name = String::<12>::new();
