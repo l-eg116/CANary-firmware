@@ -1,7 +1,7 @@
-use core::fmt::{Debug, Write};
+use core::fmt::Debug;
 
 use embedded_sdmmc::ShortFileName;
-use heapless::{String, Vec};
+use heapless::Vec;
 use rtt_target::rprintln;
 
 use crate::{
@@ -28,10 +28,6 @@ impl StateManager {
     }
 
     pub fn render(&mut self) {
-        let mut txt = String::<128>::new();
-        txt.write_fmt(format_args!("{:#?}", self.current_screen))
-            .unwrap();
-
         self.display.clear_buffer();
         match &self.current_screen {
             Screen::Home { selected_item } => draw_home(&mut self.display, selected_item),
@@ -105,19 +101,11 @@ impl Debug for StateManager {
 
 #[derive(Debug)]
 pub enum Screen {
-    Home {
-        selected_item: HomeItem,
-    },
-    EmissionSelection {
-        selected_index: usize,
-    },
+    Home { selected_item: HomeItem },
+    EmissionSelection { selected_index: usize },
     Emission,
-    EmissionSettings {
-        selected_item: EmissionSettingsItem,
-    },
-    CaptureSelection {
-        selected_index: usize,
-    },
+    EmissionSettings { selected_item: EmissionSettingsItem },
+    CaptureSelection { selected_index: usize },
     Capture,
 }
 

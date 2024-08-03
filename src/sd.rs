@@ -1,4 +1,4 @@
-use core::{cmp::Ordering, fmt::Write, str::FromStr};
+use core::{cmp::Ordering, str::FromStr};
 
 use bxcan::{Frame, StandardId};
 use embedded_sdmmc::{self as sdmmc, ShortFileName};
@@ -6,7 +6,7 @@ use heapless::{String, Vec};
 use rtic_monotonics::Monotonic;
 use stm32f1xx_hal::gpio::{Alternate, Pin};
 
-use crate::{app::Mono, spi::*};
+use crate::{app::Mono, render::formatted_string, spi::*};
 
 // Note : for performances the buffer should be at least 46 bytes since it's the
 // number of characters in a standard can log file (including '\n')
@@ -98,31 +98,26 @@ impl Iterator for CanLogsIterator<'_> {
 }
 
 pub fn frame_to_log(frame: &Frame) -> String<LOG_LINE_LEN> {
-    let mut log_line = String::<LOG_LINE_LEN>::new();
-
     let _empty = bxcan::Data::empty();
     let frame_data = frame.data().unwrap_or(&_empty);
 
-    log_line
-        .write_fmt(format_args!(
-            "({:010}.000000) can0 {:03X}#{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}\n",
-            Mono::now().ticks(),
-            match frame.id() {
-                bxcan::Id::Standard(n) => n.as_raw() as u32,
-                bxcan::Id::Extended(n) => n.as_raw(),
-            },
-            frame_data.get(0).unwrap_or(&0xFF),
-            frame_data.get(1).unwrap_or(&0xFF),
-            frame_data.get(2).unwrap_or(&0xFF),
-            frame_data.get(3).unwrap_or(&0xFF),
-            frame_data.get(4).unwrap_or(&0xFF),
-            frame_data.get(5).unwrap_or(&0xFF),
-            frame_data.get(6).unwrap_or(&0xFF),
-            frame_data.get(7).unwrap_or(&0xFF),
-        ))
-        .expect("frame should fit in line");
-
-    log_line
+    formatted_string::<LOG_LINE_LEN>(format_args!(
+        "({:010}.000000) can0 {:03X}#{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}\n",
+        Mono::now().ticks(),
+        match frame.id() {
+            bxcan::Id::Standard(n) => n.as_raw() as u32,
+            bxcan::Id::Extended(n) => n.as_raw(),
+        },
+        frame_data.get(0).unwrap_or(&0xFF),
+        frame_data.get(1).unwrap_or(&0xFF),
+        frame_data.get(2).unwrap_or(&0xFF),
+        frame_data.get(3).unwrap_or(&0xFF),
+        frame_data.get(4).unwrap_or(&0xFF),
+        frame_data.get(5).unwrap_or(&0xFF),
+        frame_data.get(6).unwrap_or(&0xFF),
+        frame_data.get(7).unwrap_or(&0xFF),
+    ))
+    .expect("frame should fit in line")
 }
 
 pub fn index_dir<const N: usize>(

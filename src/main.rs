@@ -14,8 +14,6 @@ mod state;
 
 #[app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [TIM2, TIM3, TIM4])]
 mod app {
-    use core::fmt::Write;
-
     use bxcan::Frame;
     use embedded_sdmmc as sdmmc;
     use fugit::Instant;
@@ -699,10 +697,9 @@ mod app {
                 dir
             });
 
-            let mut file_name = String::<12>::new();
-            file_name
-                .write_fmt(format_args!("{:08}.log", Mono::now().ticks()))
-                .unwrap();
+            let file_name: String<12> =
+                formatted_string(format_args!("{:08}.log", Mono::now().ticks()))
+                    .expect("Formatted args should fit");
             let mut logs = dir
                 .open_file_in_dir(&file_name[..], sdmmc::Mode::ReadWriteCreateOrTruncate)
                 .unwrap();
