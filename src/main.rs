@@ -713,14 +713,11 @@ mod app {
                 .state_manager
                 .lock(|sm| (sm.state.bitrate, sm.state.capture_silent));
             let _ = logs.write(
-                formatted_string::<64>(
-                    format_args!(
-                        "# Frames captured by CANary - Bitrate: {:4} kbps, Silent: {}\n",
-                        bitrate as u32 / 1000,
-                        silent
-                    ),
-                    false,
-                )
+                formatted_string::<64>(format_args!(
+                    "# Frames captured by CANary - Bitrate: {:4} kbps, Silent: {}\n",
+                    bitrate as u32 / 1000,
+                    silent
+                ))
                 .unwrap()
                 .as_bytes(),
             );

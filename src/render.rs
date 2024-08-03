@@ -115,16 +115,18 @@ static HIGHLIGHTED_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::
 
 pub fn formatted_string<const N: usize>(
     args: Arguments<'_>,
-    make_lowercase: bool,
 ) -> Result<String<N>, core::fmt::Error> {
     let mut string = String::new();
 
     string.write_fmt(args)?;
-    if make_lowercase {
-        string.make_ascii_lowercase()
-    }
 
     Ok(string)
+}
+
+pub fn to_ascii_lowercase<const N: usize>(mut string: String<N>) -> String<N> {
+    string.make_ascii_lowercase();
+
+    string
 }
 
 pub fn draw_header(display: &mut Display, header: &str, is_title: bool) {
@@ -343,9 +345,8 @@ pub fn draw_file_selection(
         )
         .draw(display);
 
-        let name_str = formatted_string::<16>(format_args!("{}", name), true).unwrap();
         let _ = Text::with_text_style(
-            &name_str,
+            &to_ascii_lowercase(formatted_string::<16>(format_args!("{}", name)).unwrap()),
             Point::new(13, TEXT_LINE_2 + 13 * i as i32),
             if i == highlighted_i as usize {
                 HIGHLIGHTED_TEXT_STYLE
@@ -376,7 +377,7 @@ pub fn draw_emission(
 
     draw_header(
         display,
-        &formatted_string::<16>(format_args!("{}", selected), true).unwrap(),
+        &to_ascii_lowercase(formatted_string::<16>(format_args!("{}", selected)).unwrap()),
         false,
     );
     let _ = Image::new(&emit_icon, Point::zero()).draw(display);
@@ -392,14 +393,11 @@ pub fn draw_emission(
     let count_str: String<14> = if count == 0 {
         String::from_str("Repeating xINF").unwrap()
     } else {
-        formatted_string(format_args!("Repeating x{:->3}", count), false).unwrap()
+        formatted_string(format_args!("Repeating x{:->3}", count)).unwrap()
     };
-    let bitrate_str: String<17> = formatted_string(
-        format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000),
-        false,
-    )
-    .unwrap();
-    let mode_str: String<15> = formatted_string(format_args!("Mode: {:?}", mode), false).unwrap();
+    let bitrate_str: String<17> =
+        formatted_string(format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000)).unwrap();
+    let mode_str: String<15> = formatted_string(format_args!("Mode: {:?}", mode)).unwrap();
 
     let _ = Image::new(&scroll_icon, Point::new(5 * 14 - 2, TEXT_LINE_2 - 10)).draw(display);
     let _ = Text::with_text_style(
@@ -441,11 +439,7 @@ pub fn draw_emission(
     } else if success_count == 0 {
         String::from_str("Standby").unwrap()
     } else {
-        formatted_string(
-            format_args!("Sent {}\nframes", success_count % 10000),
-            false,
-        )
-        .unwrap()
+        formatted_string(format_args!("Sent {}\nframes", success_count % 10000)).unwrap()
     };
     let _ = Text::with_text_style(
         &state_str,
@@ -473,7 +467,7 @@ pub fn draw_capture(
     let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
 
     let selected: String<16> = if let Some(selected) = selected {
-        formatted_string::<16>(format_args!("{}", selected), true).unwrap()
+        to_ascii_lowercase(formatted_string::<16>(format_args!("{}", selected)).unwrap())
     } else {
         String::from_str("root").unwrap()
     };
@@ -488,13 +482,12 @@ pub fn draw_capture(
         draw_right_hint(display, "Silent");
     }
 
-    let bitrate_str: String<20> = formatted_string(
-        format_args!("Bitrate:\n   {:4}kbps", *bitrate as u32 / 1000),
-        false,
-    )
+    let bitrate_str: String<20> = formatted_string(format_args!(
+        "Bitrate:\n   {:4}kbps",
+        *bitrate as u32 / 1000
+    ))
     .unwrap();
-    let silent_str: String<13> =
-        formatted_string(format_args!("Silent: {:}", silent), false).unwrap();
+    let silent_str: String<13> = formatted_string(format_args!("Silent: {:}", silent)).unwrap();
 
     let _ = Image::new(&scroll_icon, Point::new(5 * 11 - 2, TEXT_LINE_2 - 3)).draw(display);
     let _ = Text::with_text_style(
@@ -529,11 +522,7 @@ pub fn draw_capture(
     } else if success_count == 0 {
         String::from_str("Standby").unwrap()
     } else {
-        formatted_string(
-            format_args!("Saved {}\nframes", success_count % 10000),
-            false,
-        )
-        .unwrap()
+        formatted_string(format_args!("Saved {}\nframes", success_count % 10000)).unwrap()
     };
     let _ = Text::with_text_style(
         &state_str,
@@ -568,7 +557,7 @@ pub fn draw_emission_settings(
     )
     .draw(display);
     let _ = Text::with_text_style(
-        &formatted_string::<9>(format_args!("{}kbps", *bitrate as u32 / 1000), false).unwrap(),
+        &formatted_string::<9>(format_args!("{}kbps", *bitrate as u32 / 1000)).unwrap(),
         Point::new(val_center, TEXT_LINE_2),
         DEFAULT_TEXT_STYLE,
         CENTER_BOTTOM,
@@ -583,7 +572,7 @@ pub fn draw_emission_settings(
     )
     .draw(display);
     let _ = Text::with_text_style(
-        &formatted_string::<9>(format_args!("{:?}", mode), false).unwrap(),
+        &formatted_string::<9>(format_args!("{:?}", mode)).unwrap(),
         Point::new(val_center, TEXT_LINE_3),
         DEFAULT_TEXT_STYLE,
         CENTER_BOTTOM,
