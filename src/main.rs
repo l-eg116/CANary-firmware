@@ -50,20 +50,20 @@ mod app {
 
     /// Frequency of external oscillator.
     ///
-    /// See [stm32f1xx_hal::rcc::CFGR::use_hse()] for details.
+    /// See [`stm32f1xx_hal::rcc::CFGR::use_hse()`] for details.
     pub const HSE_CLOCK_RATE_MHZ: u32 = 8;
     /// MCU main system Clock Rate.
     ///
     /// Can be between 8 and 72 MHz. Check the STM32F103Cx documentation for details.
     ///
-    /// See [stm32f1xx_hal::rcc::CFGR::sysclk()] for details.
+    /// See [`stm32f1xx_hal::rcc::CFGR::sysclk()`] for details.
     pub const SYS_CLOCK_RATE_MHZ: u32 = 64;
     const _: () = assert!(8 <= SYS_CLOCK_RATE_MHZ && SYS_CLOCK_RATE_MHZ <= 72);
     /// Frequency of the PCLK1 clock.
     ///
     /// Defines the upper bound for SPI clock rates.
     ///
-    /// See [stm32f1xx_hal::rcc::CFGR::pclk1()] for details.
+    /// See [`stm32f1xx_hal::rcc::CFGR::pclk1()`] for details.
     pub const PCLK1_CLOCK_RATE_MHZ: u32 = 16;
     /// The tick rate of the timer peripheral in Hz.
     ///
@@ -72,35 +72,35 @@ mod app {
 
     /// Capacity of the CAN TX queue.
     ///
-    /// This queue serves as a buffer for SD reading operations. It gets filled by [sd_reader()]
-    /// and is consumed by [can_sender()].
+    /// This queue serves as a buffer for SD reading operations. It gets filled by [`sd_reader()`]
+    /// and is consumed by [`can_sender()`].
     pub const CAN_TX_QUEUE_CAPACITY: usize = 8;
     /// Capacity of the CAN RX queue.
     ///
-    /// This queue serves as a buffer for SD writing operations. It gets filled by [can_receiver()]
-    /// and is consumed by [sd_writer()]. It's important to make the queue large as SD writing operations
+    /// This queue serves as a buffer for SD writing operations. It gets filled by [`can_receiver()`]
+    /// and is consumed by [`sd_writer()`]. It's important to make the queue large as SD writing operations
     /// are much slower than a full speed CAN bus.
     pub const SD_RX_QUEUE_CAPACITY: usize = 64;
 
     /// Debouncing delay applied to button inputs.
     ///
-    /// Button presses for a same button closer that [DEBOUNCE_DELAY_MS] will be ignored.
+    /// Button presses for a same button closer that [`DEBOUNCE_DELAY_MS`] will be ignored.
     pub const DEBOUNCE_DELAY_MS: u32 = 100;
 
     /// SPI clock rate for the SD interface.
     ///
-    /// Must be lower than [PCLK1_CLOCK_RATE_MHZ].
+    /// Must be lower than [`PCLK1_CLOCK_RATE_MHZ`].
     pub const SD_SPI_CLK_MHZ: u32 = 16;
     const _: () = assert!(SD_SPI_CLK_MHZ <= PCLK1_CLOCK_RATE_MHZ);
     /// Maximum number of file from a single directory than can be loaded at once.
     ///
-    /// If a directory contains more than [MAX_SD_INDEX_AMOUNT] files, only the first [MAX_SD_INDEX_AMOUNT]
+    /// If a directory contains more than [`MAX_SD_INDEX_AMOUNT`] files, only the first [`MAX_SD_INDEX_AMOUNT`]
     /// files will be displayed.
     pub const MAX_SD_INDEX_AMOUNT: usize = 32;
     /// Maximum indexing depth of the SD indexer.
     ///
     /// Opening a directory in the file explorer increases the depth of the indexer. File or directories
-    /// selected beyond the [MAX_SD_INDEX_DEPTH]th directory will not be able to be opened.
+    /// selected beyond the [`MAX_SD_INDEX_DEPTH`]th directory will not be able to be opened.
     pub const MAX_SD_INDEX_DEPTH: usize = 8;
 
     systick_monotonic!(Mono, TICK_RATE);
@@ -114,21 +114,21 @@ mod app {
         button_panel: ButtonPanel,
         /// SD card volume manager.
         volume_manager: VolumeManager,
-        /// System state manager, wraps a [Display](crate::render::Display) and [State](State).
+        /// System state manager, wraps a [`Display`](crate::render::Display) and [`State`](State).
         state_manager: StateManager,
     }
 
     #[local]
     struct Local {
-        /// Producer end of the CAN TX queue. Used by [sd_reader()].
+        /// Producer end of the CAN TX queue. Used by [`sd_reader()`].
         can_tx_producer: Producer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
-        /// Consumer end of the CAN TX queue. Used by [can_sender()].
+        /// Consumer end of the CAN TX queue. Used by [`can_sender()`].
         can_tx_consumer: Consumer<'static, Frame, CAN_TX_QUEUE_CAPACITY>,
-        /// Producer end of the CAN RX queue. Used by [can_receiver()].
+        /// Producer end of the CAN RX queue. Used by [`can_receiver()`].
         can_rx_producer: Producer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
-        /// Consumer end of the CAN RX queue. Used by [sd_writer()].
+        /// Consumer end of the CAN RX queue. Used by [`sd_writer()`].
         can_rx_consumer: Consumer<'static, Frame, SD_RX_QUEUE_CAPACITY>,
-        /// Status LED control pin. Used by [blinker()].
+        /// Status LED control pin. Used by [`blinker()`].
         status_led: Pin<'C', 15, Output>,
     }
 
@@ -317,10 +317,10 @@ mod app {
 
     /// Function sending queued CAN frames.
     ///
-    /// It triggers with the [USB_HP_CAN_TX()] interrupt and empties the CAN TX Queue. The interrupt must be
-    /// enabled for this function to trigger.
+    /// It triggers with the [`USB_HP_CAN_TX()`] interrupt and empties the CAN TX Queue. The
+    /// interrupt must be enabled for this function to trigger.
     ///
-    /// The [USB_HP_CAN_TX()] interrupt must be triggered the first time items are added to the Queue
+    /// The [`USB_HP_CAN_TX()`] interrupt must be triggered the first time items are added to the Queue
     /// to initiate transmission. Every successful transmission will trigger the interrupt again and
     /// thus consume the CAN TX Queue until empty.
     #[task(
@@ -361,7 +361,7 @@ mod app {
 
     /// Function queuing received CAN frames for SD writing.
     ///
-    /// It triggers with the [USB_LP_CAN_RX0()] interrupt and fills the SD RX Queue. The interrupt
+    /// It triggers with the [`USB_LP_CAN_RX0()`] interrupt and fills the SD RX Queue. The interrupt
     /// must be enabled for this function to trigger.
     ///
     /// If the SD RX Queue is full, the received frame will be dumped and a warning will be emitted.
@@ -387,10 +387,10 @@ mod app {
 
     /// Function handling OK button inputs.
     ///
-    /// It is triggered by the [EXTI4()] interrupt which can be triggered by any enabled Px4 pin (PA4,
-    /// PB4, PC4). See [init()] for details on enabled pins.
+    /// It is triggered by the [`EXTI4()`] interrupt which can be triggered by any enabled Px4 pin (PA4,
+    /// PB4, PC4). See [`init()`] for details on enabled pins.
     ///
-    /// It first checks for debouncing then updates the [StateManager].
+    /// It first checks for debouncing then updates the [`StateManager`].
     #[task(
         binds = EXTI4,
         priority = 8,
@@ -413,10 +413,10 @@ mod app {
 
     /// Function handling UP button inputs.
     ///
-    /// It is triggered by the [EXTI0()] interrupt which can be triggered by any enabled Px0 pin (PA0,
-    /// PB0, PC0, PD0). See [init()] for details on enabled pins.
+    /// It is triggered by the [`EXTI0()`] interrupt which can be triggered by any enabled Px0 pin (PA0,
+    /// PB0, PC0, PD0). See [`init()`] for details on enabled pins.
     ///
-    /// It first checks for debouncing then updates the [StateManager].
+    /// It first checks for debouncing then updates the [`StateManager`].
     #[task(
         binds = EXTI0,
         priority = 8,
@@ -439,10 +439,10 @@ mod app {
 
     /// Function handling DOWN button inputs.
     ///
-    /// It is triggered by the [EXTI1()] interrupt which can be triggered by any enabled Px1 pin (PA1,
-    /// PB1, PC1, PD1). See [init()] for details on enabled pins.
+    /// It is triggered by the [`EXTI1()`] interrupt which can be triggered by any enabled Px1 pin (PA1,
+    /// PB1, PC1, PD1). See [`init()`] for details on enabled pins.
     ///
-    /// It first checks for debouncing then updates the [StateManager].
+    /// It first checks for debouncing then updates the [`StateManager`].
     #[task(
         binds = EXTI1,
         priority = 8,
@@ -465,10 +465,10 @@ mod app {
 
     /// Function handling RIGHT button inputs.
     ///
-    /// It is triggered by the [EXTI2()] interrupt which can be triggered by any enabled Px2 pin (PA2,
-    /// PB2, PC2). See [init()] for details on enabled pins.
+    /// It is triggered by the [`EXTI2()`] interrupt which can be triggered by any enabled Px2 pin (PA2,
+    /// PB2, PC2). See [`init()`] for details on enabled pins.
     ///
-    /// It first checks for debouncing then updates the [StateManager].
+    /// It first checks for debouncing then updates the [`StateManager`].
     #[task(
         binds = EXTI2,
         priority = 8,
@@ -491,10 +491,10 @@ mod app {
 
     /// Function handling LEFT button inputs.
     ///
-    /// It is triggered by the [EXTI3()] interrupt which can be triggered by any enabled Px3 pin (PA3,
-    /// PB3, PC3). See [init()] for details on enabled pins.
+    /// It is triggered by the [`EXTI3()`] interrupt which can be triggered by any enabled Px3 pin (PA3,
+    /// PB3, PC3). See [`init()`] for details on enabled pins.
     ///
-    /// It first checks for debouncing then updates the [StateManager].
+    /// It first checks for debouncing then updates the [`StateManager`].
     #[task(
         binds = EXTI3,
         priority = 8,
@@ -515,7 +515,7 @@ mod app {
         let _ = state_updater::spawn();
     }
 
-    /// Function propagating updates done to the [StateManager].
+    /// Function propagating updates done to the [`StateManager`].
     ///
     /// It matches the current screen being displayed and the state of the system to determine which
     /// function to spawn of interrupt to set up. It handles starting and stopping reading and writing
@@ -564,7 +564,7 @@ mod app {
                     },
                 ) => {
                     can.enable_rx(*bitrate, *capture_silent);
-                    let _ = sd_writer::spawn(); // Can be already spawned since [state_updater()] will be called again if a button other than OK is pressed.
+                    let _ = sd_writer::spawn(); // Can be already spawned since [`state_updater()`] will be called again if a button other than OK is pressed.
                 }
                 (Screen::Emission | Screen::Capture, State { running: false, .. }) => {
                     can.disable();
@@ -577,12 +577,12 @@ mod app {
 
     /// Function indexing the Micro SD.
     ///
-    /// When called, it will read the path to index from [State::dir_path] and populate
-    /// [State::dir_content] with the index. It will only index the first [MAX_SD_INDEX_AMOUNT]
+    /// When called, it will read the path to index from [`State::dir_path`] and populate
+    /// [`State::dir_content`] with the index. It will only index the first [`MAX_SD_INDEX_AMOUNT`]
     /// files and folder found.
     ///
     /// The files and folder indexed are sorted with directories first and then by alphabetical
-    /// order. See [index_dir()] for implementation details.
+    /// order. See [`index_dir()`] for implementation details.
     #[task(
         priority = 1,
         shared = [volume_manager, state_manager],
@@ -609,13 +609,13 @@ mod app {
 
     /// Function reading CAN frames from a file on the Micro SD.
     ///
-    /// When called, it will resolve the path given in [State::dir_path] and start reading the
-    /// file's content. See [sd::CanLogsIterator] for implementation details. It will loop over the
-    /// file [State::emission_count] times except if it is `0`, in which case it will loop until
-    /// [State::running] is set to `false`. The frames read from the file will be queued to the CAN
+    /// When called, it will resolve the path given in [`State::dir_path`] and start reading the
+    /// file's content. See [`sd::CanLogsIterator`] for implementation details. It will loop over the
+    /// file [`State::emission_count`] times except if it is `0`, in which case it will loop until
+    /// [`State::running`] is set to `false`. The frames read from the file will be queued to the CAN
     /// TX Queue to be read by [can_sender()].
     ///
-    /// Once reading is done, [State::running] will be set to false and [state_updater()] will be
+    /// Once reading is done, [`State::running`] will be set to false and [`state_updater()`] will be
     /// called.
     #[task(
         priority = 1,
@@ -672,13 +672,13 @@ mod app {
 
     /// Function writing received CAN frames to the Micro SD.
     ///
-    /// When called, it will resolve the path given in [State::dir_path] and create a file in the
+    /// When called, it will resolve the path given in [`State::dir_path`] and create a file in the
     /// found folder. It will then wait for frames to be queued in the SD RX Queue. Queued frames
     /// will then be poped and written on the Micro SD.
-    /// 
-    /// When [State::running] is set to false, the Queue will be emptied and written in the file
+    ///
+    /// When [`State::running`] is set to false, the Queue will be emptied and written in the file
     /// before exiting. This is to prevent too many frames from being lost due to slowness of SD
-    /// writing compared to CAN reading, making [sd_writer()] late compared to [can_receiver()].
+    /// writing compared to CAN reading, making [`sd_writer()`] late compared to [`can_receiver()`].
     #[task(
         priority = 1,
         shared = [volume_manager, state_manager],

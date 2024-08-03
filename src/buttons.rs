@@ -37,10 +37,10 @@ pub struct ButtonPanel {
 }
 
 impl ButtonPanel {
-    /// Sets all [ButtonPanel] buttons as interrupt sources.
+    /// Sets all [`ButtonPanel`] buttons as interrupt sources.
     ///
-    /// Buttons will trigger on the [Rising](Edge::Rising) edge, meaning when they get released
-    /// (instead of when pressed) due to them being [PullUp] pins.
+    /// Buttons will trigger on the [`Rising`](Edge::Rising) edge, meaning when they get released
+    /// (instead of when pressed) due to them being [`PullUp`] pins.
     pub fn enable_interrupts(&mut self, afio: &mut afio::Parts, exti: &mut EXTI) {
         self.button_ok.make_interrupt_source(afio);
         self.button_up.make_interrupt_source(afio);
@@ -61,7 +61,7 @@ impl ButtonPanel {
         self.button_left.enable_interrupt(exti);
     }
 
-    /// Clears all [ButtonPanel] buttons interrupt pending bits.
+    /// Clears all [`ButtonPanel`] buttons interrupt pending bits.
     pub fn clear_all_interrupt_pending_bits(&mut self) {
         self.button_ok.clear_interrupt_pending_bit();
         self.button_up.clear_interrupt_pending_bit();
@@ -70,7 +70,7 @@ impl ButtonPanel {
         self.button_left.clear_interrupt_pending_bit();
     }
 
-    /// Queries all [ButtonPanel] buttons interrupt state.
+    /// Queries all [`ButtonPanel`] buttons interrupt state.
     pub fn get_interrupt_states(&self) -> ButtonPanelState {
         ButtonPanelState {
             ok_pressed: self.button_ok.check_interrupt(),
@@ -81,7 +81,7 @@ impl ButtonPanel {
         }
     }
 
-    /// Queries all [ButtonPanel] buttons state.
+    /// Queries all [`ButtonPanel`] buttons state.
     pub fn get_states(&self) -> ButtonPanelState {
         ButtonPanelState {
             ok_pressed: self.button_ok.is_low(),
@@ -103,7 +103,7 @@ pub enum Button {
     Left,
 }
 
-/// Representation of the state of the buttons of a [ButtonPanel].
+/// Representation of the state of the buttons of a [`ButtonPanel`].
 #[derive(Debug)]
 pub struct ButtonPanelState {
     /// Whether the OK button is pressed.
@@ -119,7 +119,7 @@ pub struct ButtonPanelState {
 }
 
 impl ButtonPanelState {
-    /// A [ButtonPanelState] with all buttons released.
+    /// A [`ButtonPanelState`] with all buttons released.
     pub fn default() -> Self {
         Self {
             ok_pressed: false,
@@ -130,7 +130,7 @@ impl ButtonPanelState {
         }
     }
 
-    /// Debugging function printing to RTT the [ButtonPanelState].
+    /// Debugging function printing to RTT the [`ButtonPanelState`].
     pub fn print(&self) {
         rprint!(
             "{} {} {} {} {}",
@@ -143,13 +143,13 @@ impl ButtonPanelState {
     }
 }
 
-/// Updates an input [Instant] and returns whether the input should be ignored.
-/// 
+/// Updates an input [`Instant`] and returns whether the input should be ignored.
+///
 /// Physical switches can sometimes trigger multiple times when pressed or released. This function
-/// aims to filter inputs judged too close (defined by [DEBOUNCE_DELAY_MS]).
-/// 
+/// aims to filter inputs judged too close (defined by [`DEBOUNCE_DELAY_MS`]).
+///
 /// This is done by updating the provided `last_press_time` and checking if the time delta is lower
-/// than [DEBOUNCE_DELAY_MS]. The function then returns `true` if the input should be ignored.
+/// than [`DEBOUNCE_DELAY_MS`]. The function then returns `true` if the input should be ignored.
 pub fn debounce_input(last_press_time: &mut Option<Instant<u32, 1, TICK_RATE>>) -> bool {
     let now = Mono::now();
     let last_time = last_press_time
