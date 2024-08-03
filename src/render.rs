@@ -102,12 +102,12 @@ static RIGHT_BOTTOM: TextStyle = TextStyleBuilder::new()
     .baseline(Baseline::Bottom)
     .build();
 
-static BUTTON_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
+static DEFAULT_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
     .stroke_color(BinaryColor::On)
     .stroke_width(1)
     .stroke_alignment(StrokeAlignment::Inside)
     .build();
-static BUTTON_STROKE_SELECTED: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
+static HIGHLIGHTED_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
     .stroke_color(BinaryColor::On)
     .stroke_width(2)
     .stroke_alignment(StrokeAlignment::Inside)
@@ -175,7 +175,7 @@ fn draw_left_hint(display: &mut Display, hint: &str) {
     )
     .draw(display);
     let _ = text_hint.draw(display);
-    let _ = hint_outline.draw_styled(&BUTTON_STROKE, display);
+    let _ = hint_outline.draw_styled(&DEFAULT_STROKE, display);
 }
 fn draw_right_hint(display: &mut Display, hint: &str) {
     let text_hint = Text::with_text_style(
@@ -198,7 +198,7 @@ fn draw_right_hint(display: &mut Display, hint: &str) {
     )
     .draw(display);
     let _ = text_hint.draw(display);
-    let _ = hint_outline.draw_styled(&BUTTON_STROKE, display);
+    let _ = hint_outline.draw_styled(&DEFAULT_STROKE, display);
 }
 fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
     let text_hint = Text::with_text_style(
@@ -227,7 +227,7 @@ fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
     )
     .draw(display);
     let _ = text_hint.draw(display);
-    let _ = hint_outline.draw_styled(&BUTTON_STROKE, display);
+    let _ = hint_outline.draw_styled(&DEFAULT_STROKE, display);
 }
 
 pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
@@ -235,19 +235,23 @@ pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
     let capture_icon =
         Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp")).unwrap();
 
-    draw_header(display, concat!("CANary v", env!("CARGO_PKG_VERSION")), true);
+    draw_header(
+        display,
+        concat!("CANary v", env!("CARGO_PKG_VERSION")),
+        true,
+    );
 
     let emit_button_pos = Point::new((DISPLAY_WIDTH / 4) as i32, 37);
     let capt_button_pos = Point::new((DISPLAY_WIDTH / 4 * 3) as i32, 37);
     let home_button_size = Size::new(48, 48);
     let (emit_styles, capt_styles) = match selected_item {
         HomeItem::Emit => (
-            (&BUTTON_STROKE_SELECTED, HIGHLIGHTED_TEXT_STYLE),
-            (&BUTTON_STROKE, DEFAULT_TEXT_STYLE),
+            (&HIGHLIGHTED_STROKE, HIGHLIGHTED_TEXT_STYLE),
+            (&DEFAULT_STROKE, DEFAULT_TEXT_STYLE),
         ),
         HomeItem::Capture => (
-            (&BUTTON_STROKE, DEFAULT_TEXT_STYLE),
-            (&BUTTON_STROKE_SELECTED, HIGHLIGHTED_TEXT_STYLE),
+            (&DEFAULT_STROKE, DEFAULT_TEXT_STYLE),
+            (&HIGHLIGHTED_STROKE, HIGHLIGHTED_TEXT_STYLE),
         ),
     };
 
@@ -607,5 +611,5 @@ pub fn draw_emission_settings(
         ),
         Size::new_equal(4),
     )
-    .draw_styled(&BUTTON_STROKE, display);
+    .draw_styled(&DEFAULT_STROKE, display);
 }
