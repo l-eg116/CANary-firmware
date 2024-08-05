@@ -1,3 +1,5 @@
+//! Button managing abstractions.
+
 use rtic_monotonics::{fugit::Instant, Monotonic as _};
 use rtt_target::rprint;
 use stm32f1xx_hal::{

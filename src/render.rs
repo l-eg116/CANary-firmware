@@ -1,3 +1,5 @@
+//! Collection of functions allowing rendering on the display.
+
 use core::{
     fmt::{Arguments, Write},
     str::FromStr,

@@ -1,3 +1,5 @@
+//! CAN bus wrappers and relevant abstractions.
+
 use bxcan::{filter::Mask32, Fifo, Frame};
 use heapless::spsc::Producer;
 use stm32f1xx_hal::{

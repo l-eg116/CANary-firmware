@@ -1,3 +1,5 @@
+//! SPI wrappers
+
 use core::cmp::max;
 
 use cortex_m::prelude::*;

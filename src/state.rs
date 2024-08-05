@@ -1,3 +1,5 @@
+//! State, screens and inputs relevant abstractions.
+
 use core::fmt::Debug;
 
 use embedded_sdmmc::ShortFileName;

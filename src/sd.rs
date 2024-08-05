@@ -1,3 +1,5 @@
+//! Functions and abstractions for interacting with a SD card.
+
 use core::{cmp::Ordering, str::FromStr};
 
 use bxcan::{Frame, StandardId};
