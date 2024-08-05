@@ -11,14 +11,22 @@ use crate::{
     render::*,
 };
 
+/// The firmware state manager.
+///
+/// It wraps a [`Display`] (the physical hardware), a [`Screen`] (what is being shown on the
+/// `display`) and a [`State`]. This struct is responsible for rendering (trough
+/// [`render()`][StateManager::render()]), input handling is delegated to the [`Screen`] struct.
 pub struct StateManager {
+    /// Physical display to render to.
     display: Display,
+    /// Current screen that should be displayed.
     current_screen: Screen,
+    /// State of the system.
     pub state: State,
 }
 
 impl StateManager {
-    // procedures communes à tous les écrans
+    /// Builds a default [`StateManager`] with the given `display`.
     pub fn default_with_display(display: Display) -> Self {
         Self {
             display,
@@ -27,6 +35,13 @@ impl StateManager {
         }
     }
 
+    /// Renders the [`current_screen`][Self::current_screen] to the [`display`][Self::display].
+    ///
+    /// This is done by matching the [`current_screen`][Self::current_screen] and calling the
+    /// appropriate `draw` function from the [`render`][crate::render] module.
+    ///
+    /// This also prints a debug message with the [`current_screen`][Self::current_screen] and
+    /// [`state`][Self::state].
     pub fn render(&mut self) {
         self.display.clear_buffer();
         match &self.current_screen {
@@ -71,11 +86,15 @@ impl StateManager {
         rprintln!("{:#?}", self);
     }
 
+    /// Propagates a button press and renders the screen.
+    ///
+    /// See [`Screen::press()`] for implementation details.
     pub fn press(&mut self, button: Button) {
         self.current_screen.press(button, &mut self.state);
         self.render();
     }
 
+    /// Returns a reference to the [`current_screen`][Self::current_screen].
     pub fn current_screen(&self) -> &Screen {
         &self.current_screen
     }
@@ -99,16 +118,38 @@ impl Debug for StateManager {
     }
 }
 
+/// Enumerator of UI screens.
 #[derive(Debug)]
 pub enum Screen {
-    Home { selected_item: HomeItem },
-    EmissionSelection { selected_index: usize },
+    /// Home screen.
+    Home {
+        /// Currently selected item.
+        selected_item: HomeItem,
+    },
+    /// File selection screen for emission.
+    EmissionSelection {
+        /// Index of currently selected item (file/directory) in [`State::dir_content`].
+        selected_index: usize,
+    },
+    /// Emission screen.
     Emission,
-    EmissionSettings { selected_item: EmissionSettingsItem },
-    CaptureSelection { selected_index: usize },
+    /// Settings screen for emission mode.
+    EmissionSettings {
+        /// Currently selected setting.
+        selected_item: EmissionSettingsItem,
+    },
+    /// Directory selection screen for capture.
+    CaptureSelection {
+        /// Index of currently selected directory.
+        selected_index: usize,
+    },
+    /// Capture screen.
     Capture,
 }
 
+/// Data-less equivalent of [`Screen`].
+///
+/// Used to request default variant of a [`Screen`].
 enum ScreenVariant {
     Home,
     EmissionSelection,
@@ -119,10 +160,12 @@ enum ScreenVariant {
 }
 
 impl Screen {
+    /// Returns the default [`Screen`].
     pub fn default() -> Self {
         Self::default_variant(ScreenVariant::Home)
     }
 
+    /// Returns the asked default `variant` of [`Screen`].
     fn default_variant(variant: ScreenVariant) -> Self {
         match variant {
             ScreenVariant::Home => Self::Home {
@@ -138,6 +181,7 @@ impl Screen {
         }
     }
 
+    /// Mutates `self` and/or `state` depending on pressed `button` and given `state`.
     pub fn press(&mut self, button: Button, state: &mut State) {
         match self {
             Self::Home { selected_item } => match button {
@@ -318,19 +362,45 @@ impl Screen {
     }
 }
 
+/// Collection of system state variables.
 #[derive(Debug)]
 pub struct State {
+    /// CAN bus bit rate.
     pub bitrate: Bitrate,
+    /// CAN bus emission mode.
     pub emission_mode: EmissionMode,
+    /// Number of repetitions for emission mode.
+    ///
+    /// `0` means infinite repetitions.
     pub emission_count: u8,
+    /// CAN bus silent flag for capture mode.
     pub capture_silent: bool,
+    /// System running flag.
+    ///
+    /// This flags indicates whether some I/O is in progress, it can be interfacing with the CAN
+    /// bus and/or the SD card. Changing this flag should be followed by a trigger of the
+    /// [`state_updater()`][crate::app::state_updater].
     pub running: bool,
+    /// Success count of last I/O operation.
+    ///
+    /// This often contains number of CAN frames sent or captured.
     pub success_count: u32,
+    /// Path of the currently selected file or directory.
+    ///
+    /// It's represented by a chain of directories to go into, terminated by the selected file or
+    /// directory.
     pub dir_path: Vec<ShortFileName, MAX_SD_INDEX_DEPTH>,
+    /// Content of the currently selected directory.
+    ///
+    /// The values are in format `(is_directory: bool, item_name: ShortFileName)`.
+    ///
+    /// The [`Vec`] is only filled while in [`EmissionSelection`][`Screen::EmissionSelection`] or
+    /// [`CaptureSelection`][`Screen::CaptureSelection`].
     pub dir_content: Vec<(bool, ShortFileName), MAX_SD_INDEX_AMOUNT>,
 }
 
 impl State {
+    /// Returns the default [`State`].
     pub fn default() -> Self {
         Self {
             bitrate: Bitrate::Br125kbps,
@@ -344,6 +414,12 @@ impl State {
         }
     }
 
+    /// Performs a reset of some values of `self`.
+    ///
+    /// The reset variables are so because considered too context dependent.
+    ///
+    /// Are reset : [`emission_count`][Self::emission_count], [`success_count`][Self::success_count],
+    /// [`dir_path`][Self::dir_path], [`dir_content`][Self::dir_content].
     pub fn soft_reset(&mut self) {
         self.emission_count = 1;
         self.success_count = 0;
@@ -352,12 +428,14 @@ impl State {
     }
 }
 
+/// Items displayed on [`Screen::Home`].
 #[derive(Debug)]
 pub enum HomeItem {
     Emit,
     Capture,
 }
 
+/// Items displayed on [`Screen::EmissionSettings`].
 #[derive(Debug)]
 pub enum EmissionSettingsItem {
     Bitrate,
@@ -365,11 +443,14 @@ pub enum EmissionSettingsItem {
 }
 
 impl EmissionSettingsItem {
+    /// Increments `self` to next [`EmissionSettingsItem`].
     pub fn increment(&mut self) {
         *self = match self {
             Self::Bitrate | Self::Mode => Self::Mode,
         }
     }
+
+    /// Decrements `self` to previous [`EmissionSettingsItem`].
     pub fn decrement(&mut self) {
         *self = match self {
             Self::Mode | Self::Bitrate => Self::Bitrate,
