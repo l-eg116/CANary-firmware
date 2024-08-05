@@ -6,15 +6,13 @@ use embedded_hal::{
     digital::OutputPin,
     spi::{self, Operation::*, SpiDevice},
 };
-use embedded_sdmmc::{TimeSource, Timestamp};
-use rtic_monotonics::{rtic_time::monotonic::TimerQueueBasedInstant, Monotonic};
 use stm32f1xx_hal::{
     gpio::{Output, Pin},
     pac::SPI2,
     spi::*,
 };
 
-use crate::app::{Mono, TICK_RATE};
+use crate::app::Mono;
 
 pub struct SpiWrapper<PINS> {
     pub spi: Spi<SPI2, Spi2NoRemap, PINS, u8>,
@@ -94,21 +92,5 @@ impl<const P: char, const N: u8> OutputPin for OutputPinWrapper<P, N> {
     fn set_low(&mut self) -> Result<(), Self::Error> {
         self.pin.set_low();
         Ok(())
-    }
-}
-
-pub struct FakeTimeSource {}
-
-impl TimeSource for FakeTimeSource {
-    fn get_timestamp(&self) -> Timestamp {
-        let secs_since_boot = Mono::now().ticks() / TICK_RATE;
-        Timestamp {
-            year_since_1970: 0,
-            zero_indexed_month: 0,
-            zero_indexed_day: (secs_since_boot / 60 / 60 / 24) as u8,
-            hours: (secs_since_boot / 60 / 60 % 24) as u8,
-            minutes: (secs_since_boot / 60 % 60) as u8,
-            seconds: (secs_since_boot % 60) as u8,
-        }
     }
 }
