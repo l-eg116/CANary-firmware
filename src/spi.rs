@@ -14,7 +14,9 @@ use stm32f1xx_hal::{
 
 use crate::app::Mono;
 
+/// A [`stm32f1xx_hal::spi::Spi`] wrapper implementing the [`embedded_hal::spi::SpiDevice`] trait.
 pub struct SpiWrapper<PINS> {
+    /// The wrapped [`stm32f1xx_hal::spi::Spi`]
     pub spi: Spi<SPI2, Spi2NoRemap, PINS, u8>,
 }
 
@@ -75,7 +77,9 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
     }
 }
 
+/// A [`stm32f1xx_hal::gpio::Pin`] wrapper implementing the [`embedded_hal::digital::OutputPin`] trait.
 pub struct OutputPinWrapper<const P: char, const N: u8> {
+    /// The wrapped [`stm32f1xx_hal::gpio::Pin`]
     pub pin: Pin<P, N, Output>,
 }
 
