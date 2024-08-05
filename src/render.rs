@@ -137,6 +137,9 @@ static HIGHLIGHTED_STROKE: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::
 ///
 /// The `N` type parameter defines the capacity of the returned [`String`]. Allocating too little
 /// will return a [`core::fmt::Error`].
+///
+/// # To-Do
+/// - [ ] Replace with a `marco_rules!` to improve calls readability.
 pub fn formatted_string<const N: usize>(
     args: Arguments<'_>,
 ) -> Result<String<N>, core::fmt::Error> {
