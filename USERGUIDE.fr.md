@@ -95,7 +95,7 @@ Pour émettre des trames CAN, des fichiers `.log` doivent préalablement être c
 
 Les trames doivent être présentés au format utilisé par [`can-utils`](https://github.com/linux-can/can-utils) comme présenté dans la section [Récupérer une capture](#récupérer-une-capture). Les 2 premiers éléments sont ignorés et seuls les identifiants et trames sont lus.
 
-Les fichiers doivent être encodés en UTF-8 avec des fin de ligne en LF. Le comportement du CANary n'est pas garantit en cas d'encodage différent ou de fin de ligne en CRLF.
+Les fichiers doivent être encodés en UTF-8 avec des fin de ligne en LF. Le comportement du CANary n'est pas garantit en cas d'encodage différent ou de fin de ligne en CRLF. La dernière ligne du fichier doit contenir un `\n` final pour que la ligne soit considérée comme valide.
 
 > Les 2 premiers éléments peuvent être omis du fichier `.log`, donnant le format minimal suivant :
 >
@@ -109,7 +109,7 @@ Les fichiers doivent être encodés en UTF-8 avec des fin de ligne en LF. Le com
 > Présenté sous forme de regex, une ligne valide de LOG est interprétée ainsi :
 >
 > ```js
-> /.* ([0-9A-F]{3})#([0-9A-F]{16})/i
+> /.* ([0-9A-F]{3})#([0-9A-F]{16})\n/i
 >     ^^^^^^^^^^^^^ ^^^^^^^^^^^^^^
 >      Identifier      Payload
 > ```
