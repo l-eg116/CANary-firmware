@@ -112,3 +112,10 @@ Only a few dependencies are needed to build the firmware. The Rust toolchain nee
 A `shell.nix` is provided to reproduce the build environment. All dependencies are listed in the `buildInputs` field of the Nix Shell (some of them are only necessary in Nix Shells like `pkg-config` and `udev`).
 
 For `probe-rs` to work properly, the memory map of the target MCU needs to be provided. This memory map can be found in the `memory.x` file and should not be changed unless the target MCU changes. Other `probe-rs` related flags are configured in `Embed.toml`.
+
+### Notes to maintainers
+
+- The documentation for some of the functions of the `app` module cannot be generated through `cargo doc` due to the `rtic` macros. It is still available through the source code.
+- All calls to `.expect(...)` in the source code should never `panic!`, they mark errors that should not or cannot happen. The provided message explains why. If the verb "should" is used, some logic error somewhere else in the code could still cause a `panic!`.
+
+  Calls to `.unwrap()` mark places in the code that could benefit from better error handling. The errors mays not be recoverable but at least informing the user would be nice.
