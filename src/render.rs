@@ -215,7 +215,8 @@ fn draw_left_hint(display: &mut Display, hint: &str) {
     );
 
     let _ = Image::new(
-        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp")).unwrap(),
+        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp"))
+            .expect("Image is a valid BMP."),
         Point::new(0, DISPLAY_HEIGHT as i32 - 12),
     )
     .draw(display);
@@ -239,7 +240,8 @@ fn draw_right_hint(display: &mut Display, hint: &str) {
     );
 
     let _ = Image::new(
-        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp")).unwrap(),
+        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp"))
+            .expect("Image is a valid BMP."),
         Point::new(DISPLAY_WIDTH as i32 - 7, DISPLAY_HEIGHT as i32 - 12),
     )
     .draw(display);
@@ -269,7 +271,8 @@ fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
     );
 
     let _ = Image::new(
-        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/ok.bmp")).unwrap(),
+        &Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/ok.bmp"))
+            .expect("Image is a valid BMP."),
         Point::new(
             text_hint.bounding_box().top_left.x - 7,
             DISPLAY_HEIGHT as i32 - 12,
@@ -285,9 +288,10 @@ fn draw_center_hint(display: &mut Display, hint: &str, x_displacement: i32) {
 /// The `selected_item` tells which [HomeItem] should be drawn as selected.
 pub fn draw_home(display: &mut Display, selected_item: &HomeItem) {
     // Load icons
-    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp")).unwrap();
-    let capture_icon =
-        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp")).unwrap();
+    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp"))
+        .expect("Image is a valid BMP.");
+    let capture_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp"))
+        .expect("Image is a valid BMP.");
 
     draw_header(
         display,
@@ -356,20 +360,23 @@ pub fn draw_file_selection(
     selected_index: usize,
 ) {
     // Load icons
-    let file_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/file.bmp")).unwrap();
-    let dir_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/directory.bmp")).unwrap();
-    let selected_icon =
-        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevron_right.bmp")).unwrap();
+    let file_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/file.bmp"))
+        .expect("Image is a valid BMP.");
+    let dir_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/directory.bmp"))
+        .expect("Image is a valid BMP.");
+    let selected_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevron_right.bmp"))
+        .expect("Image is a valid BMP.");
     let scroll_icon =
-        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp")).unwrap();
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp"))
+            .expect("Image is a valid BMP.");
 
     // Draw header
     let dir_str: String<16> = if let Some(current_dir) = current_dir {
         to_ascii_lowercase(
-            formatted_string(format_args!("{}", current_dir)).expect("ShortFileNames.len() <= 12"),
+            formatted_string(format_args!("{}", current_dir)).expect("Formatted args should fit."),
         )
     } else {
-        String::from_str("root").expect("\"root\".len() == 4")
+        String::from_str("root").expect("String fits.")
     };
     draw_header(display, &dir_str, false);
 
@@ -413,7 +420,10 @@ pub fn draw_file_selection(
         .draw(display);
 
         let _ = Text::with_text_style(
-            &to_ascii_lowercase(formatted_string::<16>(format_args!("{}", name)).unwrap()),
+            &to_ascii_lowercase(
+                formatted_string::<16>(format_args!("{}", name))
+                    .expect("Formatted args should fit."),
+            ),
             Point::new(13, TEXT_LINE_2 + 13 * i as i32),
             if i == highlighted_line as usize {
                 HIGHLIGHTED_TEXT_STYLE
@@ -439,17 +449,25 @@ pub fn draw_emission(
     success_count: u32,
 ) {
     // Load icons
-    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp")).unwrap();
+    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp"))
+        .expect("Image is a valid BMP.");
     let scroll_icon =
-        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp")).unwrap();
-    let play_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/play.bmp")).unwrap();
-    let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp")).unwrap();
-    let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp"))
+            .expect("Image is a valid BMP.");
+    let play_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/play.bmp"))
+        .expect("Image is a valid BMP.");
+    let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp"))
+        .expect("Image is a valid BMP.");
+    let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp"))
+        .expect("Image is a valid BMP.");
 
     // Draw header and header icon
     draw_header(
         display,
-        &to_ascii_lowercase(formatted_string::<16>(format_args!("{}", selected)).unwrap()),
+        &to_ascii_lowercase(
+            formatted_string::<16>(format_args!("{}", selected))
+                .expect("Formatted args should fit."),
+        ),
         false,
     );
     let _ = Image::new(&emit_icon, Point::zero()).draw(display);
@@ -465,13 +483,16 @@ pub fn draw_emission(
 
     // Load emission parameters
     let count_str: String<14> = if count == 0 {
-        String::from_str("Repeating xINF").unwrap()
+        String::from_str("Repeating xINF").expect("String fits.")
     } else {
-        formatted_string(format_args!("Repeating x{:->3}", count)).unwrap()
+        formatted_string(format_args!("Repeating x{:->3}", count))
+            .expect("Formatted args should fit.")
     };
     let bitrate_str: String<17> =
-        formatted_string(format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000)).unwrap();
-    let mode_str: String<15> = formatted_string(format_args!("Mode: {:?}", mode)).unwrap();
+        formatted_string(format_args!("Bitrate: {:4}kbps", *bitrate as u32 / 1000))
+            .expect("Formatted args should fit.");
+    let mode_str: String<15> =
+        formatted_string(format_args!("Mode: {:?}", mode)).expect("Formatted args should fit.");
 
     // Draw emission parameters
     let _ = Image::new(&scroll_icon, Point::new(5 * 14 - 2, TEXT_LINE_2 - 10)).draw(display);
@@ -512,11 +533,12 @@ pub fn draw_emission(
 
     // Draw emission state text
     let state_str: String<16> = if running {
-        String::from_str("Running").unwrap()
+        String::from_str("Running").expect("String fits.")
     } else if success_count == 0 {
-        String::from_str("Standby").unwrap()
+        String::from_str("Standby").expect("String fits.")
     } else {
-        formatted_string(format_args!("Sent {}\nframes", success_count % 10000)).unwrap()
+        formatted_string(format_args!("Sent {}\nframes", success_count % 10000))
+            .expect("Formatted args_should fit.")
     };
     let _ = Text::with_text_style(
         &state_str,
@@ -539,19 +561,26 @@ pub fn draw_capture(
     success_count: u32,
 ) {
     // Load icons
-    let capture_icon =
-        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp")).unwrap();
+    let capture_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/capture.bmp"))
+        .expect("Image is a valid BMP.");
     let scroll_icon =
-        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp")).unwrap();
-    let play_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/play.bmp")).unwrap();
-    let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp")).unwrap();
-    let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp")).unwrap();
+        Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/chevrons_vertical.bmp"))
+            .expect("Image is a valid BMP.");
+    let play_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/play.bmp"))
+        .expect("Image is a valid BMP.");
+    let pause_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/pause.bmp"))
+        .expect("Image is a valid BMP.");
+    let stop_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/stop.bmp"))
+        .expect("Image is a valid BMP.");
 
     // Draw header
     let selected: String<16> = if let Some(selected) = selected {
-        to_ascii_lowercase(formatted_string::<16>(format_args!("{}", selected)).unwrap())
+        to_ascii_lowercase(
+            formatted_string::<16>(format_args!("{}", selected))
+                .expect("Formatted args should fit."),
+        )
     } else {
-        String::from_str("root").unwrap()
+        String::from_str("root").expect("String fits.")
     };
     draw_header(display, &selected, false);
     let _ = Image::new(&capture_icon, Point::zero()).draw(display);
@@ -570,8 +599,9 @@ pub fn draw_capture(
         "Bitrate:\n   {:4}kbps",
         *bitrate as u32 / 1000
     ))
-    .unwrap();
-    let silent_str: String<13> = formatted_string(format_args!("Silent: {:}", silent)).unwrap();
+    .expect("Formatted args should fit.");
+    let silent_str: String<13> =
+        formatted_string(format_args!("Silent: {:}", silent)).expect("Formatted args should fit.");
 
     // Draw capture settings
     let _ = Image::new(&scroll_icon, Point::new(5 * 11 - 2, TEXT_LINE_2 - 3)).draw(display);
@@ -605,11 +635,12 @@ pub fn draw_capture(
 
     // Draw capture state text
     let state_str: String<16> = if running {
-        String::from_str("Listening").unwrap()
+        String::from_str("Listening").expect("String fits.")
     } else if success_count == 0 {
-        String::from_str("Standby").unwrap()
+        String::from_str("Standby").expect("String fits.")
     } else {
-        formatted_string(format_args!("Saved {}\nframes", success_count % 10000)).unwrap()
+        formatted_string(format_args!("Saved {}\nframes", success_count % 10000))
+            .expect("Formatted args should fit.")
     };
     let _ = Text::with_text_style(
         &state_str,
@@ -630,9 +661,12 @@ pub fn draw_emission_settings(
     mode: &EmissionMode,
 ) {
     // Load icons
-    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp")).unwrap();
-    let right_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp")).unwrap();
-    let left_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp")).unwrap();
+    let emit_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/emit.bmp"))
+        .expect("Image is a valid BMP.");
+    let right_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/right.bmp"))
+        .expect("Image is a valid BMP.");
+    let left_icon = Bmp::<BinaryColor>::from_slice(include_bytes!("./icons/left.bmp"))
+        .expect("Image is a valid BMP.");
 
     // Draw header and hint
     draw_header(display, "Emission Settings", false);
@@ -651,7 +685,8 @@ pub fn draw_emission_settings(
     )
     .draw(display);
     let _ = Text::with_text_style(
-        &formatted_string::<9>(format_args!("{}kbps", *bitrate as u32 / 1000)).unwrap(),
+        &formatted_string::<9>(format_args!("{}kbps", *bitrate as u32 / 1000))
+            .expect("Formatted args should fit."),
         Point::new(val_center, TEXT_LINE_2),
         DEFAULT_TEXT_STYLE,
         CENTER_BOTTOM,
@@ -667,7 +702,7 @@ pub fn draw_emission_settings(
     )
     .draw(display);
     let _ = Text::with_text_style(
-        &formatted_string::<9>(format_args!("{:?}", mode)).unwrap(),
+        &formatted_string::<9>(format_args!("{:?}", mode)).expect("Formatted args should fit."),
         Point::new(val_center, TEXT_LINE_3),
         DEFAULT_TEXT_STYLE,
         CENTER_BOTTOM,

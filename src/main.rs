@@ -230,7 +230,7 @@ mod app {
         rprintln!("-> LED");
         flush_text_line(&mut display, "-> Status LED & blink", TEXT_LINE_4);
         let status_led = gpioc.pc15.into_push_pull_output(&mut gpioc.crh);
-        blinker::spawn().unwrap();
+        blinker::spawn().expect("Blinker wasn't started yet.");
 
         // Init SD Card
         rprintln!("-> SD Card");
@@ -267,7 +267,7 @@ mod app {
         // Init StateManager
         let mut state_manager = StateManager::default_with_display(display);
         state_manager.render();
-        state_updater::spawn().unwrap();
+        state_updater::spawn().expect("State updater wasn't started yet.");
 
         rprintln!("Initialisation done");
 
@@ -375,7 +375,7 @@ mod app {
             if let Ok(frame) = can.bus.receive() {
                 rprintln!("Received {:?}", frame);
                 if rx_queue.ready() {
-                    rx_queue.enqueue(frame).expect("rx_queue is ready");
+                    rx_queue.enqueue(frame).expect("rx_queue is ready.");
                 } else {
                     rprintln!("WARNING - Couldn't queue a frame for writing");
                 }
@@ -529,10 +529,10 @@ mod app {
         (cx.shared.state_manager, cx.shared.can).lock(|sm, can| {
             match (sm.current_screen(), &sm.state) {
                 (Screen::EmissionSelection { .. }, State { running: true, .. }) => {
-                    sd_indexer::spawn(false).expect("sd_indexer isn't running");
+                    let _ = sd_indexer::spawn(false); // If sd_indexer is already running, just wait for it to finish
                 }
                 (Screen::CaptureSelection { .. }, State { running: true, .. }) => {
-                    sd_indexer::spawn(true).expect("sd_indexer isn't running");
+                    let _ = sd_indexer::spawn(true); // If sd_indexer is already running, just wait for it to finish
                 }
                 (
                     Screen::EmissionSelection { .. } | Screen::CaptureSelection { .. },
@@ -550,7 +550,8 @@ mod app {
                     },
                 ) => {
                     can.enable_tx(*bitrate, *emission_mode);
-                    sd_reader::spawn().expect("sd_reader isn't running");
+                    sd_reader::spawn()
+                        .expect("sd_reader shouldn't be running (running was false).");
                 }
                 (
                     Screen::Capture,
@@ -592,7 +593,8 @@ mod app {
             let mut dir = sd_volume.open_root_dir().unwrap();
 
             for dir_name in &sm.state.dir_path {
-                dir.change_dir(dir_name).unwrap();
+                dir.change_dir(dir_name)
+                    .expect("Path only contains existing items.");
             }
 
             sm.state.dir_content = Vec::new();
@@ -602,7 +604,8 @@ mod app {
             sm.state.running = false;
         });
 
-        state_updater::spawn().expect("could not update state");
+        state_updater::spawn()
+            .expect("state_updater should not be running (it has higher priority)");
     }
 
     /// Function reading CAN frames from a file on the Micro SD.
@@ -632,10 +635,14 @@ mod app {
 
             let (file, mut dir) = cx.shared.state_manager.lock(|sm| {
                 let mut dir = sd_volume.open_root_dir().unwrap();
-                let (file, path) = sm.state.dir_path.split_last().expect("path is provided");
+                let (file, path) = sm
+                    .state
+                    .dir_path
+                    .split_last()
+                    .expect("Path should have been filled before calling sd_reader.");
                 for dir_name in path {
-                    rprintln!("{:?}", dir_name);
-                    dir.change_dir(dir_name).unwrap();
+                    dir.change_dir(dir_name)
+                        .expect("Path only contains existing items.");
                 }
 
                 (file.clone(), dir)
@@ -645,7 +652,8 @@ mod app {
 
             while emission_count.unwrap_or(u8::MAX) > 0 && get_running() {
                 let logs = CanLogsIterator::new(
-                    dir.open_file_in_dir(&file, sdmmc::Mode::ReadOnly).unwrap(),
+                    dir.open_file_in_dir(&file, sdmmc::Mode::ReadOnly)
+                        .expect("Path only contains existing items."),
                 );
 
                 for frame in logs {
@@ -653,7 +661,7 @@ mod app {
                     if !get_running() {
                         break;
                     }
-                    enqueue_frame(tx_queue, frame).expect("tx_queue is ready");
+                    enqueue_frame(tx_queue, frame).expect("tx_queue is ready.");
                 }
 
                 if let Some(ref mut n) = emission_count {
@@ -665,7 +673,8 @@ mod app {
         });
 
         cx.shared.state_manager.lock(|sm| sm.state.running = false);
-        state_updater::spawn().expect("could not update state");
+        state_updater::spawn()
+            .expect("state_updater should not be running (it has higher priority)");
     }
 
     /// Function writing received CAN frames to the Micro SD.
@@ -691,7 +700,8 @@ mod app {
             let mut dir = cx.shared.state_manager.lock(|sm| {
                 let mut dir = sd_volume.open_root_dir().unwrap();
                 for dir_name in &sm.state.dir_path {
-                    dir.change_dir(dir_name).unwrap();
+                    dir.change_dir(dir_name)
+                        .expect("Path only contains existing items.");
                 }
 
                 dir
@@ -699,7 +709,7 @@ mod app {
 
             let file_name: String<12> =
                 formatted_string(format_args!("{:08}.log", Mono::now().ticks()))
-                    .expect("Formatted args should fit");
+                    .expect("Formatted args should fit.");
             let mut logs = dir
                 .open_file_in_dir(&file_name[..], sdmmc::Mode::ReadWriteCreateOrTruncate)
                 .unwrap();
@@ -715,7 +725,7 @@ mod app {
                     bitrate as u32 / 1000,
                     silent
                 ))
-                .unwrap()
+                .expect("Formatted args should fit.")
                 .as_bytes(),
             );
 

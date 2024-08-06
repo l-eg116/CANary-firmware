@@ -61,7 +61,10 @@ impl StateManager {
             ),
             Screen::Emission => draw_emission(
                 &mut self.display,
-                self.state.dir_path.last().expect("a file was selected"),
+                self.state
+                    .dir_path
+                    .last()
+                    .expect("Path should have been filled."),
                 self.state.running,
                 self.state.emission_count,
                 &self.state.bitrate,
@@ -83,7 +86,7 @@ impl StateManager {
                 &self.state.emission_mode,
             ),
         }
-        self.display.flush().unwrap();
+        self.display.flush().expect("Display should be responding.");
 
         rprintln!("{:#?}", self);
     }
@@ -296,7 +299,7 @@ impl Screen {
                         state.dir_path.push(dir_name.clone()).unwrap();
                         *self = Self::default_variant(ScreenVariant::Capture);
                     }
-                    (false, _) => unreachable!(),
+                    (false, _) => unreachable!("dir_content will only contain dirs."),
                 },
                 Button::Up => {
                     *selected_index = selected_index.wrapping_sub(1);

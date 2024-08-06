@@ -129,22 +129,25 @@ impl Iterator for CanLogsIterator<'_> {
                 let read_count = self.log_file.read(&mut buffer).ok()?; // ? Read error
                 self.stored
                     .push_str(core::str::from_utf8(&buffer[..read_count]).ok()?) // ? utf-8 char got split
-                    .expect("it fits");
+                    .expect("Buffer fits in stored (checked at if).");
             }
 
             let new_line_i = self.stored.find("\n");
-            if let None = new_line_i {
+
+            let new_line_i = if let Some(i) = new_line_i {
+                i
+            } else {
                 if STORE_BUFFER_SIZE - self.stored.len() >= READ_BUFFER_SIZE {
                     continue;
                 } else {
                     break;
                 }
-            }
-            let new_line_i = new_line_i.expect("some");
+            };
             let stored_clone = self.stored.clone();
 
             let log_line = &stored_clone[..new_line_i];
-            self.stored = String::from_str(&stored_clone[new_line_i + 1..]).expect("it fits");
+            self.stored = String::from_str(&stored_clone[new_line_i + 1..])
+                .expect("Stored slice fits in stored.");
 
             if log_line.starts_with('#') {
                 continue; // skip comment lines
@@ -195,7 +198,7 @@ pub fn frame_to_log(frame: &Frame) -> String<LOG_LINE_LEN> {
         frame_data.get(6).unwrap_or(&0xFF),
         frame_data.get(7).unwrap_or(&0xFF),
     ))
-    .expect("frame should fit in line")
+    .expect("LOG_LINE_LEN should be large enough.")
 }
 
 /// Indexes the content of `dir` into the provided `content` [`Vec`].
@@ -259,7 +262,7 @@ pub fn index_dir<const N: usize>(
     if content.is_empty() || (dirs_only && !content.contains(&(true, ShortFileName::this_dir()))) {
         content
             .insert(0, (true, ShortFileName::this_dir()))
-            .expect("there is space"); // TODO : handle edge case : content.is_full()
+            .expect("Content should not be filled."); // TODO : handle edge case : content.is_full()
     }
 
     Ok(())
