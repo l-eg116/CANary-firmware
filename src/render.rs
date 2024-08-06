@@ -386,7 +386,7 @@ pub fn draw_file_selection(
     draw_right_hint(display, "enter");
 
     // Check content length
-    if content.len() == 0 {
+    if content.is_empty() {
         return;
     }
     if content.len() > 3 {
@@ -408,7 +408,7 @@ pub fn draw_file_selection(
     // Draw selected entries
     for (i, (is_dir, name)) in content.iter().enumerate() {
         let _ = Image::new(
-            if i == highlighted_line as usize {
+            if i == highlighted_line {
                 &selected_icon
             } else if *is_dir {
                 &dir_icon
@@ -425,7 +425,7 @@ pub fn draw_file_selection(
                     .expect("Formatted args should fit."),
             ),
             Point::new(13, TEXT_LINE_2 + 13 * i as i32),
-            if i == highlighted_line as usize {
+            if i == highlighted_line {
                 HIGHLIGHTED_TEXT_STYLE
             } else {
                 DEFAULT_TEXT_STYLE

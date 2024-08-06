@@ -136,12 +136,10 @@ impl Iterator for CanLogsIterator<'_> {
 
             let new_line_i = if let Some(i) = new_line_i {
                 i
+            } else if STORE_BUFFER_SIZE - self.stored.len() >= READ_BUFFER_SIZE {
+                continue;
             } else {
-                if STORE_BUFFER_SIZE - self.stored.len() >= READ_BUFFER_SIZE {
-                    continue;
-                } else {
-                    break;
-                }
+                break;
             };
             let stored_clone = self.stored.clone();
 

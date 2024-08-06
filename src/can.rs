@@ -160,6 +160,7 @@ impl Bitrate {
 
     /// Compile-time check for [`PCLK1_CLOCK_RATE_MHZ`] modification done without updating
     /// [`as_bit_timing()`][Bitrate::as_bit_timing()].
+    #[allow(clippy::assertions_on_constants)]
     const _HAS_PCLK1_CHANGED: () = assert!(
         PCLK1_CLOCK_RATE_MHZ == 16, // Change right hand side after updating bit timings
         "Updated PCLK1 rates without changing CAN bit timings"

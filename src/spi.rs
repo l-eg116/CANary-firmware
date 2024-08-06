@@ -31,17 +31,17 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
         &mut self,
         operations: &mut [embedded_hal::spi::Operation<'_, u8>],
     ) -> Result<(), Self::Error> {
-        let mut res = Ok(());
+        let mut result = Ok(());
 
         for operation in operations {
-            if res.is_err() {
+            if result.is_err() {
                 break;
             }
             match operation {
                 Read(words) => {
                     for n in 0..words.len() {
-                        if let Err(_) = self.spi.write(&[0x00]) {
-                            res = Err(embedded_hal::spi::ErrorKind::Other);
+                        if self.spi.write(&[0x00]).is_err() {
+                            result = Err(embedded_hal::spi::ErrorKind::Other);
                             break;
                         };
                         words[n] = self.spi.read_data_reg();
@@ -49,12 +49,12 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
                 }
                 Write(words) => match self.spi.write(words) {
                     Ok(()) => continue,
-                    Err(_) => res = Err(embedded_hal::spi::ErrorKind::Other),
+                    Err(_) => result = Err(embedded_hal::spi::ErrorKind::Other),
                 },
                 Transfer(read, write) => {
                     for n in 0..max(read.len(), write.len()) {
-                        if let Err(_) = self.spi.write(&[*write.get(n).unwrap_or(&0x00)]) {
-                            res = Err(embedded_hal::spi::ErrorKind::Other);
+                        if self.spi.write(&[*write.get(n).unwrap_or(&0x00)]).is_err() {
+                            result = Err(embedded_hal::spi::ErrorKind::Other);
                             break;
                         };
                         if n < read.len() {
@@ -64,8 +64,8 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
                 }
                 TransferInPlace(words) => {
                     for n in 0..words.len() {
-                        if let Err(_) = self.spi.write(&words[n..n + 1]) {
-                            res = Err(embedded_hal::spi::ErrorKind::Other);
+                        if self.spi.write(&words[n..n + 1]).is_err() {
+                            result = Err(embedded_hal::spi::ErrorKind::Other);
                             break;
                         };
                         words[n] = self.spi.read_data_reg();
@@ -75,7 +75,7 @@ impl<PINS> SpiDevice for SpiWrapper<PINS> {
             }
         }
 
-        return res;
+        result
     }
 }
 

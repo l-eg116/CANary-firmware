@@ -194,7 +194,7 @@ mod app {
         let interface = I2CDisplayInterface::new(display_i2c);
         let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
             .into_buffered_graphics_mode();
-        while let Err(_) = display.init() {}
+        while display.init().is_err() {}
 
         draw_header(&mut display, "Booting...", true);
         let _ = display.flush();
@@ -337,7 +337,7 @@ mod app {
             if can.bus.is_transmitter_idle() {
                 while let Some(frame) = tx_queue.peek() {
                     rprintln!("Transmitting {:?}", frame);
-                    match can.bus.transmit(&frame) {
+                    match can.bus.transmit(frame) {
                         Ok(status) => {
                             tx_queue.dequeue();
                             assert_eq!(
@@ -732,7 +732,7 @@ mod app {
             while cx.shared.state_manager.lock(|sm| sm.state.running) || rx_queue.ready() {
                 if let Some(frame) = rx_queue.dequeue() {
                     rprintln!("Writing {:?}", frame);
-                    if let Err(_) = logs.write(frame_to_log(&frame).as_bytes()) {
+                    if logs.write(frame_to_log(&frame).as_bytes()).is_err() {
                         rprintln!("Got error on writing ");
                     } else {
                         cx.shared
