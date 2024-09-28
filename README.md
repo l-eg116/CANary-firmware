@@ -9,6 +9,12 @@ CANary firmware is the firmware for the CANary project. This project has the goa
 
 This firmware was made for a STM32F103CB and bundles a graphical interface, a CAN bus controller and a SD card explorer. A CAN transceiver must be used along the STM32 to properly interface with the CAN bus.
 
+> Une version en français du README est disponible dans le fichier [README.fr.md](README.fr.md).
+
+This project was made during a 4 month internship for the french Gendarmerie Nationale's Laboratoire du Véhicule Numérique (LVN - Numeric Vehicules' Laboratory).
+
+Whilst the firmware is open-source, the hardware of the device has to remain closed-source for security and confidentiality reasons.
+
 ## Compiling and flashing
 
 ### Building the firmware
